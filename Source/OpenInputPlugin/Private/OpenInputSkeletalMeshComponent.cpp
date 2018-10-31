@@ -3,6 +3,7 @@
 #include "GripMotionControllerComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "VRGlobalSettings.h"
+#include "XRMotionControllerBase.h" // for GetHandEnumForSourceName()
 //#include "EngineMinimal.h"
 
 UOpenInputSkeletalMeshComponent::UOpenInputSkeletalMeshComponent(const FObjectInitializer& ObjectInitializer)

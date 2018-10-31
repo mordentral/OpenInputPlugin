@@ -35,6 +35,7 @@ public class OpenInputPlugin : ModuleRules
                 "CoreUObject",
                 "Engine",
                 "InputCore",
+                "HeadMountedDisplay",
                // "HeadMountedDisplay",
                 "RHI",
                 "RenderCore",
