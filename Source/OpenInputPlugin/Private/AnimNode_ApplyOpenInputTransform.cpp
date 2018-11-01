@@ -148,14 +148,12 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 
 
 		TransBones.Add(FBoneTransform(BonePair.ReferenceToConstruct.CachedCompactPoseIndex, trans));
-		Output.Pose.LocalBlendCSBoneTransforms(TransBones, BlendWeight);
-		TransBones.Reset();
-
 		//Apply transforms to list
 		//OutBoneTransforms.Emplace(BonePair.ReferenceToConstruct.CachedCompactPoseIndex, trans);
 	}
 
-
+	Output.Pose.LocalBlendCSBoneTransforms(TransBones, BlendWeight);
+	TransBones.Reset();
 }
 
 bool FAnimNode_ApplyOpenInputTransform::IsValidToEvaluate(const USkeleton* Skeleton, const FBoneContainer& RequiredBones)
