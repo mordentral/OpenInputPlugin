@@ -10,6 +10,7 @@
 #include "Animation/AnimInstanceProxy.h"
 #include "VRBPDatatypes.h"
 #include "OpenInputFunctionLibrary.h"
+#include "Engine/DataAsset.h"
 
 #include "OpenInputSkeletalMeshComponent.generated.h"
 

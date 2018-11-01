@@ -2,9 +2,15 @@
 
 #pragma once
 #include "CoreMinimal.h"
+#include "Engine/Engine.h"
 #include "UObject/ObjectMacros.h"
 #include "UObject/Object.h"
 #include "GameFramework/WorldSettings.h"
+#include "Kismet/BlueprintFunctionLibrary.h"
+#include "HAL/FileManager.h"
+#include "Misc/Paths.h"
+#include "Engine/EngineTypes.h"
+
 //#include "Engine/Texture.h"
 //#include "Engine/EngineTypes.h"
 //#include "VRExpansionFunctionLibrary.h"
