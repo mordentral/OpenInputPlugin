@@ -35,6 +35,8 @@ public:
 
 	FBPOpenVRSkeletalPair()
 	{
+		OpenVRBone = EVROpenInputBones::eBone_Root;
+		BoneToTarget = NAME_None;
 	}
 
 	FBPOpenVRSkeletalPair(EVROpenInputBones Bone, FString TargetBone)
@@ -159,6 +161,7 @@ public:
 	FBPSkeletalMappingData()
 	{
 		bInitialized = false;
+		bMergeRootAndWristBones = false;
 	}
 };
 
