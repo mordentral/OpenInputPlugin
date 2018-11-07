@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
-	"Version": 4.20,
-	"VersionName": "4.20",
+	"Version": 4.21,
+	"VersionName": "4.21",
 	"FriendlyName": "OpenInputPlugin",
 	"Description": "Adds several new nodes for open input support",
 	"Category": "VRExpansion",
