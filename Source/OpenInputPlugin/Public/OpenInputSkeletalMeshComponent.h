@@ -88,7 +88,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGesture")
 		float Threshold;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGesture")
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "VRGesture")
 		bool bWasRightHand;
 
 	FOpenInputGesture()
