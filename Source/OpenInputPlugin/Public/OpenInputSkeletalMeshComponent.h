@@ -88,9 +88,13 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGesture")
 		float Threshold;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGesture")
+		bool bWasRightHand;
+
 	FOpenInputGesture()
 	{
 		Threshold = 2.0f;
+		bWasRightHand = false;
 	}
 };
 
@@ -144,26 +148,27 @@ public:
 		UOpenInputGestureDatabase *GesturesDB;
 
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
-	void SaveCurrentPose(FBPOpenVRActionInfo SkeletalDataToSave,FString RecordingName)
+	void SaveCurrentPose(FString RecordingName)
 	{
 		if (GesturesDB)
 		{
 			FOpenInputGesture NewGesture;
-			NewGesture.BonePoses = SkeletalDataToSave.SkeletalTransforms;
+			NewGesture.BonePoses = HandSkeletalAction.SkeletalTransforms;//SkeletalDataToSave.SkeletalTransforms;
 			NewGesture.Name = RecordingName;
+			NewGesture.bWasRightHand = bIsForRightHand;
 			GesturesDB->Gestures.Add(NewGesture);
 		}
 	}
 
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
-	bool DetectCurrentPose(FBPOpenVRActionInfo SkeletalDataToCheck, FOpenInputGesture &GestureOut)
+	bool DetectCurrentPose(FOpenInputGesture &GestureOut)
 	{
 		if (!GesturesDB || GesturesDB->Gestures.Num() < 1)
 			return false;
 
 		for (const FOpenInputGesture& Gesture : GesturesDB->Gestures)
 		{
-			if (Gesture.BonePoses.Num() != SkeletalDataToCheck.SkeletalTransforms.Num())
+			if (Gesture.BonePoses.Num() != HandSkeletalAction.SkeletalTransforms.Num())
 				continue;
 
 
@@ -181,7 +186,7 @@ public:
 				{}break;
 				default:
 				{
-					if (!SkeletalDataToCheck.SkeletalTransforms[i].Equals(Gesture.BonePoses[i], Gesture.Threshold))
+					if (!HandSkeletalAction.SkeletalTransforms[i].Equals(Gesture.BonePoses[i], Gesture.Threshold))
 					{
 						bDetectedPose = false;
 					}
@@ -203,7 +208,7 @@ public:
 	}
 
 	// This version throws events
-	bool DetectCurrentPose(FBPOpenVRActionInfo &SkeletalDataToCheck, FString &LastGesture, bool bIsRightHand)
+	bool DetectCurrentPose(FString &LastGesture)
 	{
 		if (!GesturesDB || GesturesDB->Gestures.Num() < 1)
 			return false;
@@ -212,7 +217,7 @@ public:
 
 		for (const FOpenInputGesture& Gesture : GesturesDB->Gestures)
 		{
-			if (Gesture.BonePoses.Num() != SkeletalDataToCheck.SkeletalTransforms.Num())
+			if (Gesture.BonePoses.Num() != HandSkeletalAction.SkeletalTransforms.Num())
 				continue;
 
 
@@ -230,8 +235,8 @@ public:
 				{}break;
 				default:
 				{
-					BoneTransform = SkeletalDataToCheck.SkeletalTransforms[i];
-					if(bIsRightHand)
+					BoneTransform = HandSkeletalAction.SkeletalTransforms[i];
+					if(bIsForRightHand != Gesture.bWasRightHand)
 						BoneTransform.Mirror(EAxis::Y, EAxis::Z);
 					
 					if (!BoneTransform.Equals(Gesture.BonePoses[i], Gesture.Threshold))
@@ -304,6 +309,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = SkeletalData)
 		bool bGetSkeletalTransforms_WithController;
 
+	UPROPERTY(EditAnywhere, Category = SkeletalData)
 	bool bIsForRightHand;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = SkeletalData,Replicated, ReplicatedUsing = OnRep_SkeletalTransforms)

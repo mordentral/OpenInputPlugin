@@ -195,7 +195,7 @@ void UOpenInputSkeletalMeshComponent::TickComponent(float DeltaTime, enum ELevel
 	if (bDetectGestures && GesturesDB != nullptr && GesturesDB->Gestures.Num() > 0)
 	{
 		if (HandSkeletalAction.bHasValidData)
-			DetectCurrentPose(HandSkeletalAction, LastHandGesture, bIsForRightHand);
+			DetectCurrentPose(LastHandGesture);
 	}
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
