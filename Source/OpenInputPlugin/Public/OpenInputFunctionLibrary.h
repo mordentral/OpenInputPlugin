@@ -252,10 +252,13 @@ public:
 
 		float WorldToMeters = ((WorldToUseForScale != nullptr) ? WorldToMeters = WorldToUseForScale->GetWorldSettings()->WorldToMeters : 100.f);
 
-		for (int i = 0; i < BoneTransforms.Num(); i++)
+		for (int i = 0; i < BoneTransforms.Num(); ++i)
 		{
-			FQuat Orientation(-BoneTransforms[i].orientation.z, BoneTransforms[i].orientation.x, BoneTransforms[i].orientation.y, -BoneTransforms[i].orientation.w);
-			Action.SkeletalTransforms[i] = FTransform(Orientation, CONVERT_STEAMVECTOR_TO_FVECTOR(BoneTransforms[i].position) * WorldToMeters);
+			Action.SkeletalTransforms[i] =
+				FTransform(
+					FQuat(-BoneTransforms[i].orientation.z, BoneTransforms[i].orientation.x, BoneTransforms[i].orientation.y, -BoneTransforms[i].orientation.w),
+					CONVERT_STEAMVECTOR_TO_FVECTOR(BoneTransforms[i].position) * WorldToMeters
+				);
 		}
 
 
@@ -334,14 +337,6 @@ public:
 			FMemory::Memcpy(Action.CompressedTransforms.GetData(), TempBuffer.GetData(), Action.CompressedSize);
 		}
 
-		// If the handle doesn't map to a correct action handle
-		// Should likely throw an error here and stop getting a handle
-		if (InputError == vr::EVRInputError::VRInputError_InvalidHandle)
-		{
-			Action.ActionHandle = vr::k_ulInvalidActionHandle;
-			return false;
-		}
-
 		if (InputError != vr::EVRInputError::VRInputError_None)
 			return false;
 
@@ -367,10 +362,13 @@ public:
 		UWorld* World = (WorldContextObject) ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull) : nullptr;
 		float WorldToMeters = ((World != nullptr) ? WorldToMeters = World->GetWorldSettings()->WorldToMeters : 100.f);
 
-		for (int i = 0; i < BoneTransforms.Num(); i++)
+		for (int i = 0; i < BoneTransforms.Num(); ++i)
 		{
-			FQuat Orientation(-BoneTransforms[i].orientation.z, BoneTransforms[i].orientation.x, BoneTransforms[i].orientation.y, -BoneTransforms[i].orientation.w);
-			Action.SkeletalTransforms[i] = FTransform(Orientation, CONVERT_STEAMVECTOR_TO_FVECTOR(BoneTransforms[i].position) * WorldToMeters);
+			Action.SkeletalTransforms[i] = 
+				FTransform(
+					FQuat(-BoneTransforms[i].orientation.z, BoneTransforms[i].orientation.x, BoneTransforms[i].orientation.y, -BoneTransforms[i].orientation.w),
+					CONVERT_STEAMVECTOR_TO_FVECTOR(BoneTransforms[i].position) * WorldToMeters
+				);
 		}
 
 		Action.bHasValidData = true;

@@ -14,12 +14,12 @@ UOpenInputSkeletalMeshComponent::UOpenInputSkeletalMeshComponent(const FObjectIn
 
 	bGetSkeletalTransforms_WithController = false;
 
-	// Should I convert over to tick? Forgot that timers can trigger twice....
-	UpdateRateForSkeletalAnimations = 90.f;
 	ReplicationRateForSkeletalAnimations = 60.f;
 	bReplicateSkeletalData = false;
 	bOffsetByControllerProfile = true;
 	SkeletalNetUpdateCount = 0.f;
+
+	bDetectGestures = true;
 }
 
 void UOpenInputSkeletalMeshComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const
@@ -192,7 +192,7 @@ void UOpenInputSkeletalMeshComponent::TickComponent(float DeltaTime, enum ELevel
 	}
 
 
-	if (GesturesDB != nullptr && GesturesDB->Gestures.Num() > 0)
+	if (bDetectGestures && GesturesDB != nullptr && GesturesDB->Gestures.Num() > 0)
 	{
 		if (HandSkeletalAction.bHasValidData)
 			DetectCurrentPose(HandSkeletalAction, LastHandGesture, bIsForRightHand);

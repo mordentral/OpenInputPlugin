@@ -14,7 +14,6 @@
 
 #include "OpenInputSkeletalMeshComponent.generated.h"
 
-
 USTRUCT(/*noexport, */BlueprintType, Category = "OpenInputLibrary|SkeletalTransform")
 struct FSkeletalTransform_NetQuantize : public FTransform_NetQuantize
 {
@@ -123,6 +122,16 @@ class OPENINPUTPLUGIN_API UOpenInputSkeletalMeshComponent : public USkeletalMesh
 
 public:
 	UOpenInputSkeletalMeshComponent(const FObjectInitializer& ObjectInitializer);
+
+	// Says whether we should run gesture detection
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGestures")
+		bool bDetectGestures;
+
+	UFUNCTION(BlueprintCallable, Category = "VRGestures")
+		void SetDetectGestures(bool bNewDetectGestures)
+	{
+		bDetectGestures = bNewDetectGestures;
+	}
 
 	UPROPERTY(BlueprintAssignable, Category = "VRGestures")
 		FOpenVRGestureDetected OnNewGestureDetected;
@@ -268,6 +277,7 @@ public:
 		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner && MyOwner->Role == ENetRole::ROLE_Authority);
 	}
 
+	// Using tick and not timers because skeletal components tick anyway, kind of a waste to make another tick by adding a timer over that
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ControllerProfile")
@@ -326,9 +336,6 @@ public:
 
 	FString LastHandGesture;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = SkeletalData)
-	float UpdateRateForSkeletalAnimations;
-
 	UPROPERTY(EditAnywhere, Category = SkeletalData)
 		bool bReplicateSkeletalData;
 	
@@ -339,7 +346,6 @@ public:
 	float SkeletalNetUpdateCount;
 	// Used in Tick() to accumulate before sending updates, didn't want to use a timer in this case, also used for remotes to lerp position
 	float SkeletalUpdateCount;
-
 };	
 
 USTRUCT()
