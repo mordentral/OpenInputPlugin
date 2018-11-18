@@ -1,0 +1,68 @@
+Due to older engine versions being on an incompatible open input version and the 4.21 beta having a broken implementation.
+There is a minor modification required to test skeletal transforms currently.
+
+I am avoiding loading a manifest like others are doing as it will globally break all input in the engine.
+Doing this instead lets you dev normally but also have access to skeletal data in the mean time while Epic fixes their implementation.
+Those using source versions may decide to go in and temp modify the manifest file write out in the mean time as well.
+
+However this method also allows you to test skeletal data in older engine versions as I am sideloading the newest OpenInput.
+So you should be able to use it as far back as 4.19 or maybe even older (only tested 4.20 and 4.21).
+
+You may want to get the knuckles controller profile from the latest template.
+
+Also I am also packaging the OpenInput testing hands as they are pre-rigged and fully setup already and they look 100x better than
+pretty much all stock hands for ue4. (when using ue4 hands you likely will want to turn off bone morphing in the settings as 
+they likely won't be rigged correctly for it).
+
+
+1.
+
+COMPILE with the new module in the VRExpansionPlugin base folder next to the OpenVR folder and the VRExpansion folder.
+
+2.
+
+Go to 
+\Steam\steamapps\common\SteamVR\resources\config\legacy_actions.json
+
+And either add the top two sections in the included legacy_actions.json file
+Or overwrite it with the included legacy actions file (backup your original).
+
+
+Once that is done, launch into the editor, then open up the SteamVRInput mapping and make a custom profile for the editor.
+In the skeletal section add the left hand skeleton and right hand skeleton to the left/right action mappings and save your profile.
+
+(I am also not providing default bindings because they would overwrite what ever custom ones you have setup for your knuckles).
+
+
+3.
+
+Load in and go to your pawn, under each motion controller add an OpenInputSkeletalMeshComponent
+
+Change the ActionName variable to /actions/legacy/in/lefthand_anim and /actions/legacy/in/righthand_anim respectfully.
+
+Leave the rest of the settings default for now.
+
+
+4.
+
+Open up the animation blueprint for your hand meshes
+Click on "ClassSettings" on the menu bar
+Re-parent the class to the OpenInputAnimInstance class
+
+
+5.
+
+Go to the Anim graph for the anim blueprint and drop in a Apply_OpenInput_Transform animation node
+Hook up the output to the final animation pose input
+Change the drop down selection to which hand right/left it is (I may automate the hand type at some point) and which skeleton to use OpenInput/UE4
+
+You can also manually map a new skeleton but that is outside of this txt files scope.
+
+
+
+Play, you should be good now. This is stil very beta since I have to hack it all to work until Epic fixes stuff, but everything works.
+You can make and record gestures, get events when they are thrown, see your hands animate with a controller or without, ect.
+
+Feel free to ask me questions in PM or discord, and replication, while enabled, is not final, so be careful with it.
+
+
