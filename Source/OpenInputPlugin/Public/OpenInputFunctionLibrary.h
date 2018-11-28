@@ -234,7 +234,7 @@ public:
 
 		vr::EVRInputError InputError = vr::EVRInputError::VRInputError_None;
 		vr::EVRSkeletalTransformSpace TransSpace = Action.bGetTransformsInParentSpace ? vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model;
-		InputError = VRInput->DecompressSkeletalBoneData(Action.CompressedTransforms.GetData(), Action.CompressedSize, &TransSpace, BoneTransforms.GetData(), Action.BoneCount);
+		InputError = VRInput->DecompressSkeletalBoneData(Action.CompressedTransforms.GetData(), Action.CompressedSize, TransSpace, BoneTransforms.GetData(), Action.BoneCount);
 
 		if (InputError != vr::EVRInputError::VRInputError_None)
 			return false;
@@ -294,10 +294,9 @@ public:
 			}
 		}
 
-		vr::InputSkeletalActionData_t SkeletalData;
-		uint32_t ActionDataSize = sizeof(SkeletalData);
-		InputError = VRInput->GetSkeletalActionData(Action.ActionHandle, &SkeletalData, ActionDataSize, vr::k_ulInvalidInputValueHandle);
-		
+		uint32_t boneCount = 0;
+		InputError = VRInput->GetBoneCount(Action.ActionHandle, &boneCount);
+
 		// If the handle doesn't map to a correct action handle
 		// Should likely throw an error here and stop getting a handle
 		if (InputError == vr::EVRInputError::VRInputError_InvalidHandle)
@@ -307,11 +306,15 @@ public:
 
 		}
 
-		if (InputError != vr::EVRInputError::VRInputError_None || !SkeletalData.bActive || SkeletalData.boneCount < 1)
+		vr::InputSkeletalActionData_t SkeletalData;
+		uint32_t ActionDataSize = sizeof(SkeletalData);
+		InputError = VRInput->GetSkeletalActionData(Action.ActionHandle, &SkeletalData, ActionDataSize);
+
+		if (InputError != vr::EVRInputError::VRInputError_None || !SkeletalData.bActive || boneCount < 1)
 			return false;
 
 		// Set bone count so we can reference it later
-		Action.BoneCount = SkeletalData.boneCount;
+		Action.BoneCount = boneCount;
 
 		TArray<vr::VRBoneTransform_t> BoneTransforms;
 		BoneTransforms.AddZeroed(Action.BoneCount);
@@ -319,7 +322,9 @@ public:
 		vr::EVRSkeletalMotionRange MotionTypeToGet = bGetControllerSkeleton ? vr::EVRSkeletalMotionRange::VRSkeletalMotionRange_WithController : vr::EVRSkeletalMotionRange::VRSkeletalMotionRange_WithoutController;
 		
 		{
-			InputError = VRInput->GetSkeletalBoneData(Action.ActionHandle, Action.bGetTransformsInParentSpace ? vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model, MotionTypeToGet, BoneTransforms.GetData(), SkeletalData.boneCount, vr::k_ulInvalidInputValueHandle);
+
+
+			InputError = VRInput->GetSkeletalBoneData(Action.ActionHandle, Action.bGetTransformsInParentSpace ? vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model, MotionTypeToGet, BoneTransforms.GetData(), Action.BoneCount);
 			Action.CompressedSize = 0;
 			Action.CompressedTransforms.Empty();
 		}
@@ -327,11 +332,11 @@ public:
 		// We got the transforms normally for the local player as they don't have the artifacts, but we get the compressed ones for remote sending
 		if (bGetCompressedData)
 		{			
-			int32 MaxArraySize = (sizeof(vr::VRBoneTransform_t) * (SkeletalData.boneCount + 2));
+			int32 MaxArraySize = (sizeof(vr::VRBoneTransform_t) * (Action.BoneCount + 2));
 			TArray<uint8> TempBuffer;
 			TempBuffer.AddUninitialized(MaxArraySize);
 
-			InputError = VRInput->GetSkeletalBoneDataCompressed(Action.ActionHandle, Action.bGetTransformsInParentSpace ? vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model, MotionTypeToGet, TempBuffer.GetData(), MaxArraySize, &Action.CompressedSize, vr::k_ulInvalidInputValueHandle);
+			InputError = VRInput->GetSkeletalBoneDataCompressed(Action.ActionHandle, /*Action.bGetTransformsInParentSpace ? vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model,*/ MotionTypeToGet, TempBuffer.GetData(), MaxArraySize, &Action.CompressedSize);
 			Action.CompressedTransforms.Reset(Action.CompressedSize);
 			Action.CompressedTransforms.AddUninitialized(Action.CompressedSize);
 			FMemory::Memcpy(Action.CompressedTransforms.GetData(), TempBuffer.GetData(), Action.CompressedSize);
@@ -345,10 +350,10 @@ public:
 			Action.OldSkeletalTransforms = Action.SkeletalTransforms;
 		}
 
-		if (Action.SkeletalTransforms.Num() != SkeletalData.boneCount)
+		if (Action.SkeletalTransforms.Num() != Action.BoneCount)
 		{
-			Action.SkeletalTransforms.Reset(SkeletalData.boneCount);
-			Action.SkeletalTransforms.AddUninitialized(SkeletalData.boneCount);
+			Action.SkeletalTransforms.Reset(Action.BoneCount);
+			Action.SkeletalTransforms.AddUninitialized(Action.BoneCount);
 		}
 
 		/*struct HmdQuaternionf_t
