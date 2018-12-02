@@ -181,7 +181,7 @@ void UOpenInputSkeletalMeshComponent::TickComponent(float DeltaTime, enum ELevel
 			}
 		}
 
-		UOpenInputFunctionLibrary::GetActionPose(HandSkeletalAction, this, bGetSkeletalTransforms_WithController, bGetCompressedTransforms);
+		UOpenInputFunctionLibrary::GetActionPose(HandSkeletalAction, this, bGetSkeletalTransforms_WithController, bGetCompressedTransforms, GesturesDB != nullptr);
 
 		if (GetNetMode() == NM_Client/* && !IsTornOff()*/)
 		{

@@ -23,6 +23,16 @@
 
 #include "OpenInputFunctionLibrary.generated.h"
 
+// Holds the action handle in a BP friendly form
+USTRUCT(BlueprintType, Category = "VRExpansionFunctions|SteamVR|HandSkeleton")
+struct OPENINPUTPLUGIN_API FBPOpenVRActionHandle
+{
+	GENERATED_BODY()
+public:
+
+	vr::VRActionHandle_t ActionHandle;
+};
+
 //const BoneIndex_t INVALID_BONEINDEX = -1;
 UENUM(BlueprintType)
 enum class EVROpenInputBones : uint8
@@ -60,9 +70,66 @@ enum class EVROpenInputBones : uint8
 	eBone_Aux_PinkyFinger,
 	eBone_Count
 };
-	// No prefix = 1000 series
-	//Prop_TrackingSystemName_String_1000				UMETA(DisplayName = "Prop_TrackingSystemName_String"),
 
+UENUM(BlueprintType)
+enum class EVROpenInputReferencePose : uint8
+{
+	VRSkeletalReferencePose_BindPose = 0,
+	VRSkeletalReferencePose_OpenHand,
+	VRSkeletalReferencePose_Fist,
+	VRSkeletalReferencePose_GripLimit
+};
+
+UENUM(BlueprintType)
+enum class EVROpenInputSkeletalTrackingLevel : uint8
+{
+	// body part location can’t be directly determined by the device. Any skeletal pose provided by 
+	// the device is estimated by assuming the position required to active buttons, triggers, joysticks, 
+	// or other input sensors. 
+	// E.g. Vive Controller, Gamepad
+	VRSkeletalTracking_Estimated = 0,
+
+	// body part location can be measured directly but with fewer degrees of freedom than the actual body 
+	// part. Certain body part positions may be unmeasured by the device and estimated from other input data. 
+	// E.g. Knuckles, gloves that only measure finger curl
+	VRSkeletalTracking_Partial,
+
+	// Body part location can be measured directly throughout the entire range of motion of the body part. 
+	// E.g. Mocap suit for the full body, gloves that measure rotation of each finger segment
+	VRSkeletalTracking_Full,
+
+	// Max value, I also use it for uninitialized
+	VRSkeletalTrackingLevel_Max
+};
+
+UENUM(BlueprintType)
+enum class EVROpenInputFingerIndexType : uint8
+{
+	VRFinger_Thumb = 0,
+	VRFinger_Index,
+	VRFinger_Middle,
+	VRFinger_Ring,
+	VRFinger_Pinky,
+	VRFingerSplay_Thumb_Index,
+	VRFingerSplay_Index_Middle,
+	VRFingerSplay_Middle_Ring,
+	VRFingerSplay_Ring_Pinky
+};
+
+USTRUCT(BlueprintType, Category = "VRExpansionFunctions|SteamVR|HandSkeleton")
+struct OPENINPUTPLUGIN_API FBPOpenVRGesturePoseData
+{
+	GENERATED_BODY()
+public:
+
+	// Not a static array because it is BP accessible
+	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = Default)
+		TArray<float> PoseFingerCurls;
+
+	// Not a static array because it is BP accessible
+	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = Default)
+		TArray<float> PoseFingerSplays;
+};
 
 USTRUCT(BlueprintType, Category = "VRExpansionFunctions|SteamVR|HandSkeleton")
 struct OPENINPUTPLUGIN_API FBPOpenVRActionInfo
@@ -73,11 +140,21 @@ public:
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 		FString ActionName;
 	
-	//UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
+	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 		bool bGetTransformsInParentSpace;
 
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
+		bool bGetTransformsFacingYForward;
+
+	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 		bool bAllowDeformingMesh;
+
+	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = Default)
+		TArray<int32> BoneParentIndexes;
+
+	// Not a static array because it is BP accessible
+	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = Default)
+		FBPOpenVRGesturePoseData PoseFingerData;
 
 	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = Default)
 		TArray<FTransform> SkeletalTransforms;
@@ -96,7 +173,11 @@ public:
 	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = Default)
 		bool bHasValidData;
 
-	vr::VRActionHandle_t ActionHandle;
+	// The level of trackin that the OpenInputdevice has (only valid value if this bHasValidData)
+	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = Default)
+		EVROpenInputSkeletalTrackingLevel SkeletalTrackingLevel;
+
+	FBPOpenVRActionHandle ActionHandleContainer;
 
 	UPROPERTY()
 	TArray<uint8> CompressedTransforms;
@@ -107,14 +188,16 @@ public:
 
 	FBPOpenVRActionInfo()
 	{
-		ActionHandle = vr::k_ulInvalidActionHandle;
+		ActionHandleContainer.ActionHandle = vr::k_ulInvalidActionHandle;
 		bHasValidData = false;
 		CompressedSize = 0;
 		BoneCount = 0;
 		bGetTransformsInParentSpace = false;
+		bGetTransformsFacingYForward = false;
 		AdditionTransform = FTransform(FRotator(0.f, 90.f, 90.f),FVector::ZeroVector, FVector(1.f));
 		RootAdditionTransform = FTransform::Identity;
 		bAllowDeformingMesh = true;
+		SkeletalTrackingLevel = EVROpenInputSkeletalTrackingLevel::VRSkeletalTrackingLevel_Max;
 	}
 
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
@@ -157,6 +240,38 @@ public:
 		return FVector(-InVector.v[2], InVector.v[0], InVector.v[1]);
 	}
 
+	FORCEINLINE static FVector CONVERT_STEAMVECTOR_TO_FVECTOR_Y(const vr::HmdVector4_t InVector)
+	{
+		return FVector(-InVector.v[0], -InVector.v[2], InVector.v[1]);
+	}
+	
+	FORCEINLINE static FQuat CONVERT_STEAMQUAT_TO_FQUAT(const vr::HmdQuaternionf_t InQuat)
+	{
+		return FQuat(-InQuat.z, InQuat.x, InQuat.y, -InQuat.w);
+	}
+
+	FORCEINLINE static FQuat CONVERT_STEAMQUAT_TO_FQUAT_Y(const vr::HmdQuaternionf_t InQuat)
+	{
+		return FQuat(-InQuat.x, -InQuat.z, InQuat.y, -InQuat.w);
+	}
+	
+	FORCEINLINE static FTransform CONVERT_STEAMTRANS_TO_FTRANS(const vr::VRBoneTransform_t InTrans, float WorldToMeters)
+	{
+		return FTransform(
+			FQuat(-InTrans.orientation.z, InTrans.orientation.x, InTrans.orientation.y, -InTrans.orientation.w),
+			FVector(-InTrans.position.v[2], InTrans.position.v[0], InTrans.position.v[1]) * WorldToMeters
+		);
+	}
+
+	FORCEINLINE static FTransform CONVERT_STEAMTRANS_TO_FTRANS_Y(const vr::VRBoneTransform_t InTrans, float WorldToMeters)
+	{
+		return FTransform(
+			FQuat(-InTrans.orientation.x, -InTrans.orientation.z, InTrans.orientation.y, -InTrans.orientation.w),
+			FVector(-InTrans.position.v[0], -InTrans.position.v[2], InTrans.position.v[1]) * WorldToMeters
+			);
+	}
+
+
 #endif
 
 	// Checks if a specific OpenVR device is connected, index names are assumed, they may not be exact
@@ -197,12 +312,12 @@ public:
 
 		vr::EVRInputError InputError = vr::EVRInputError::VRInputError_None;
 
-		if (Action.ActionHandle == vr::k_ulInvalidActionHandle)
+		if (Action.ActionHandleContainer.ActionHandle == vr::k_ulInvalidActionHandle)
 		{
-			InputError = VRInput->GetActionHandle(TCHAR_TO_UTF8(*Action.ActionName), &Action.ActionHandle);
+			InputError = VRInput->GetActionHandle(TCHAR_TO_UTF8(*Action.ActionName), &Action.ActionHandleContainer.ActionHandle);
 			if (InputError != vr::EVRInputError::VRInputError_None)
 			{
-				Action.ActionHandle = vr::k_ulInvalidActionHandle;
+				Action.ActionHandleContainer.ActionHandle = vr::k_ulInvalidActionHandle;
 				return false;
 			}
 		}
@@ -252,13 +367,16 @@ public:
 
 		float WorldToMeters = ((WorldToUseForScale != nullptr) ? WorldToMeters = WorldToUseForScale->GetWorldSettings()->WorldToMeters : 100.f);
 
-		for (int i = 0; i < BoneTransforms.Num(); ++i)
+		// Skipping checking the bool on loop
+		if (Action.bGetTransformsFacingYForward)
 		{
-			Action.SkeletalTransforms[i] =
-				FTransform(
-					FQuat(-BoneTransforms[i].orientation.z, BoneTransforms[i].orientation.x, BoneTransforms[i].orientation.y, -BoneTransforms[i].orientation.w),
-					CONVERT_STEAMVECTOR_TO_FVECTOR(BoneTransforms[i].position) * WorldToMeters
-				);
+			for (int i = 0; i < BoneTransforms.Num(); ++i)
+				Action.SkeletalTransforms[i] = CONVERT_STEAMTRANS_TO_FTRANS_Y(BoneTransforms[i], WorldToMeters);
+		}
+		else
+		{
+			for (int i = 0; i < BoneTransforms.Num(); ++i)
+				Action.SkeletalTransforms[i] = CONVERT_STEAMTRANS_TO_FTRANS(BoneTransforms[i], WorldToMeters);
 		}
 
 
@@ -268,7 +386,7 @@ public:
 
 	// Checks if a specific OpenVR device is connected, index names are assumed, they may not be exact
 	UFUNCTION(BlueprintCallable, Category = "OpenInputFunctions|SteamVR", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", CallableWithoutWorldContext))
-		static bool GetActionPose(UPARAM(ref)FBPOpenVRActionInfo & Action, class UObject* WorldContextObject,bool bGetControllerSkeleton = false, bool bGetCompressedData = false)
+		static bool GetActionPose(UPARAM(ref)FBPOpenVRActionInfo & Action, class UObject* WorldContextObject,bool bGetControllerSkeleton = false, bool bGetCompressedData = false, bool bGetGestureValues = false)
 	{
 #if !STEAMVR_SUPPORTED_PLATFORM
 		Action.bHasValidData = false;
@@ -284,31 +402,31 @@ public:
 
 		vr::EVRInputError InputError = vr::EVRInputError::VRInputError_None;
 
-		if (Action.ActionHandle == vr::k_ulInvalidActionHandle)
+		if (Action.ActionHandleContainer.ActionHandle == vr::k_ulInvalidActionHandle)
 		{
-			InputError = VRInput->GetActionHandle(TCHAR_TO_UTF8(*Action.ActionName), &Action.ActionHandle);
+			InputError = VRInput->GetActionHandle(TCHAR_TO_UTF8(*Action.ActionName), &Action.ActionHandleContainer.ActionHandle);
 			if (InputError != vr::EVRInputError::VRInputError_None)
 			{
-				Action.ActionHandle = vr::k_ulInvalidActionHandle;
+				Action.ActionHandleContainer.ActionHandle = vr::k_ulInvalidActionHandle;
 				return false;
 			}
 		}
 
 		uint32_t boneCount = 0;
-		InputError = VRInput->GetBoneCount(Action.ActionHandle, &boneCount);
+		InputError = VRInput->GetBoneCount(Action.ActionHandleContainer.ActionHandle, &boneCount);
 
 		// If the handle doesn't map to a correct action handle
 		// Should likely throw an error here and stop getting a handle
 		if (InputError == vr::EVRInputError::VRInputError_InvalidHandle)
 		{
-			Action.ActionHandle = vr::k_ulInvalidActionHandle;
+			Action.ActionHandleContainer.ActionHandle = vr::k_ulInvalidActionHandle;
 			return false;
 
 		}
 
 		vr::InputSkeletalActionData_t SkeletalData;
 		uint32_t ActionDataSize = sizeof(SkeletalData);
-		InputError = VRInput->GetSkeletalActionData(Action.ActionHandle, &SkeletalData, ActionDataSize);
+		InputError = VRInput->GetSkeletalActionData(Action.ActionHandleContainer.ActionHandle, &SkeletalData, ActionDataSize);
 
 		if (InputError != vr::EVRInputError::VRInputError_None || !SkeletalData.bActive || boneCount < 1)
 			return false;
@@ -316,17 +434,62 @@ public:
 		// Set bone count so we can reference it later
 		Action.BoneCount = boneCount;
 
+		// On first tick using this, load the bone parent index array
+		if (!Action.BoneParentIndexes.Num())
+		{
+			Action.BoneParentIndexes.AddZeroed(Action.BoneCount);
+			InputError = VRInput->GetBoneHierarchy(Action.ActionHandleContainer.ActionHandle, Action.BoneParentIndexes.GetData(), Action.BoneCount);
+
+			if (InputError != vr::EVRInputError::VRInputError_None)
+				return false;
+		}
+
+		// On first tick using this, load the skeletal tracking level
+		if (Action.SkeletalTrackingLevel == EVROpenInputSkeletalTrackingLevel::VRSkeletalTrackingLevel_Max)
+		{
+			vr::EVRSkeletalTrackingLevel TrackingLevel;
+			VRInput->GetSkeletalTrackingLevel(Action.ActionHandleContainer.ActionHandle, &TrackingLevel);
+
+			if (InputError != vr::EVRInputError::VRInputError_None)
+				return false;
+
+			Action.SkeletalTrackingLevel = (EVROpenInputSkeletalTrackingLevel)TrackingLevel;
+		}
+
+		// If we are supposed to get gesture values, load them too
+		if (bGetGestureValues)
+		{
+			vr::VRSkeletalSummaryData_t SkeletalSummaryData;
+			VRInput->GetSkeletalSummaryData(Action.ActionHandleContainer.ActionHandle, &SkeletalSummaryData);
+
+			if (InputError != vr::EVRInputError::VRInputError_None)
+				return false;
+
+			Action.PoseFingerData.PoseFingerCurls.Reset(vr::VRFinger_Count);
+			for (int i = 0; i < vr::VRFinger_Count; ++i)
+			{
+				Action.PoseFingerData.PoseFingerCurls.Add(SkeletalSummaryData.flFingerCurl[i]);
+			}
+
+			if (Action.SkeletalTrackingLevel == EVROpenInputSkeletalTrackingLevel::VRSkeletalTracking_Full)
+			{
+				Action.PoseFingerData.PoseFingerSplays.Reset(vr::VRFingerSplay_Count);
+				for (int i = 0; i < vr::VRFingerSplay_Count; ++i)
+				{
+					Action.PoseFingerData.PoseFingerSplays.Add(SkeletalSummaryData.flFingerSplay[i]);
+				}
+			}
+		}
+
 		TArray<vr::VRBoneTransform_t> BoneTransforms;
 		BoneTransforms.AddZeroed(Action.BoneCount);
 
 		vr::EVRSkeletalMotionRange MotionTypeToGet = bGetControllerSkeleton ? vr::EVRSkeletalMotionRange::VRSkeletalMotionRange_WithController : vr::EVRSkeletalMotionRange::VRSkeletalMotionRange_WithoutController;
 		
 		{
-
-
-			InputError = VRInput->GetSkeletalBoneData(Action.ActionHandle, Action.bGetTransformsInParentSpace ? vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model, MotionTypeToGet, BoneTransforms.GetData(), Action.BoneCount);
+			InputError = VRInput->GetSkeletalBoneData(Action.ActionHandleContainer.ActionHandle, Action.bGetTransformsInParentSpace ? vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model, MotionTypeToGet, BoneTransforms.GetData(), Action.BoneCount);
 			Action.CompressedSize = 0;
-			Action.CompressedTransforms.Empty();
+			Action.CompressedTransforms.Empty(bGetCompressedData ? Action.BoneCount : 0);
 		}
 		
 		// We got the transforms normally for the local player as they don't have the artifacts, but we get the compressed ones for remote sending
@@ -336,7 +499,7 @@ public:
 			TArray<uint8> TempBuffer;
 			TempBuffer.AddUninitialized(MaxArraySize);
 
-			InputError = VRInput->GetSkeletalBoneDataCompressed(Action.ActionHandle, /*Action.bGetTransformsInParentSpace ? vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model,*/ MotionTypeToGet, TempBuffer.GetData(), MaxArraySize, &Action.CompressedSize);
+			InputError = VRInput->GetSkeletalBoneDataCompressed(Action.ActionHandleContainer.ActionHandle, /*Action.bGetTransformsInParentSpace ? vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model,*/ MotionTypeToGet, TempBuffer.GetData(), MaxArraySize, &Action.CompressedSize);
 			Action.CompressedTransforms.Reset(Action.CompressedSize);
 			Action.CompressedTransforms.AddUninitialized(Action.CompressedSize);
 			FMemory::Memcpy(Action.CompressedTransforms.GetData(), TempBuffer.GetData(), Action.CompressedSize);
@@ -367,13 +530,16 @@ public:
 		UWorld* World = (WorldContextObject) ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull) : nullptr;
 		float WorldToMeters = ((World != nullptr) ? WorldToMeters = World->GetWorldSettings()->WorldToMeters : 100.f);
 
-		for (int i = 0; i < BoneTransforms.Num(); ++i)
+		// Skipping checking the bool on loop
+		if (Action.bGetTransformsFacingYForward)
 		{
-			Action.SkeletalTransforms[i] = 
-				FTransform(
-					FQuat(-BoneTransforms[i].orientation.z, BoneTransforms[i].orientation.x, BoneTransforms[i].orientation.y, -BoneTransforms[i].orientation.w),
-					CONVERT_STEAMVECTOR_TO_FVECTOR(BoneTransforms[i].position) * WorldToMeters
-				);
+			for (int i = 0; i < BoneTransforms.Num(); ++i)
+				Action.SkeletalTransforms[i] = CONVERT_STEAMTRANS_TO_FTRANS_Y(BoneTransforms[i], WorldToMeters);
+		}
+		else
+		{
+			for (int i = 0; i < BoneTransforms.Num(); ++i)
+				Action.SkeletalTransforms[i] = CONVERT_STEAMTRANS_TO_FTRANS(BoneTransforms[i], WorldToMeters);
 		}
 
 		Action.bHasValidData = true;
@@ -382,4 +548,102 @@ public:
 #endif
 	}
 
+	// Checks if a specific OpenVR device is connected, index names are assumed, they may not be exact
+	UFUNCTION(BlueprintCallable, Category = "OpenInputFunctions|SteamVR", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", CallableWithoutWorldContext))
+		static bool GetReferencePose(UPARAM(ref)FBPOpenVRActionInfo & BlankActionToFill, FBPOpenVRActionHandle ActionHandleToQuery, bool bGetTransformsInParentSpace, class UObject* WorldContextObject, EVROpenInputReferencePose PoseTypeToRetreive)
+	{
+#if !STEAMVR_SUPPORTED_PLATFORM
+		Action.bHasValidData = false;
+		return false;
+#else
+		vr::EVRInitError Initerror;
+		vr::IVRInput * VRInput = (vr::IVRInput*)vr::VR_GetGenericInterface(vr::IVRInput_Version, &Initerror);
+
+		BlankActionToFill.bHasValidData = false;
+		BlankActionToFill.bGetTransformsInParentSpace = bGetTransformsInParentSpace;
+		BlankActionToFill.ActionHandleContainer = ActionHandleToQuery;
+
+		if (!VRInput)
+			return false;
+
+		vr::EVRInputError InputError = vr::EVRInputError::VRInputError_None;
+
+		uint32_t boneCount = 0;
+		InputError = VRInput->GetBoneCount(BlankActionToFill.ActionHandleContainer.ActionHandle, &boneCount);
+
+		// If the handle doesn't map to a correct action handle
+		// Should likely throw an error here and stop getting a handle
+		if (InputError == vr::EVRInputError::VRInputError_InvalidHandle)
+		{
+			BlankActionToFill.ActionHandleContainer.ActionHandle = vr::k_ulInvalidActionHandle;
+			return false;
+
+		}
+
+		vr::InputSkeletalActionData_t SkeletalData;
+		uint32_t ActionDataSize = sizeof(SkeletalData);
+		InputError = VRInput->GetSkeletalActionData(BlankActionToFill.ActionHandleContainer.ActionHandle, &SkeletalData, ActionDataSize);
+
+		if (InputError != vr::EVRInputError::VRInputError_None || !SkeletalData.bActive || boneCount < 1)
+			return false;
+
+		// Set bone count so we can reference it later
+		BlankActionToFill.BoneCount = boneCount;
+
+		TArray<vr::VRBoneTransform_t> BoneTransforms;
+		BoneTransforms.AddZeroed(BlankActionToFill.BoneCount);
+
+		{
+			InputError = VRInput->GetSkeletalReferenceTransforms(
+				BlankActionToFill.ActionHandleContainer.ActionHandle, 
+				BlankActionToFill.bGetTransformsInParentSpace ? vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model, 
+				(vr::EVRSkeletalReferencePose)PoseTypeToRetreive,
+				BoneTransforms.GetData(), 
+				BlankActionToFill.BoneCount);
+
+			BlankActionToFill.CompressedSize = 0;
+			BlankActionToFill.CompressedTransforms.Empty();
+		}
+
+		if (InputError != vr::EVRInputError::VRInputError_None)
+			return false;
+
+		if (BlankActionToFill.SkeletalTransforms.Num() > 0)
+		{
+			BlankActionToFill.OldSkeletalTransforms = BlankActionToFill.SkeletalTransforms;
+		}
+
+		if (BlankActionToFill.SkeletalTransforms.Num() != BlankActionToFill.BoneCount)
+		{
+			BlankActionToFill.SkeletalTransforms.Reset(BlankActionToFill.BoneCount);
+			BlankActionToFill.SkeletalTransforms.AddUninitialized(BlankActionToFill.BoneCount);
+		}
+
+		/*struct HmdQuaternionf_t
+		{
+		float w, x, y, z;
+		};
+		OutOrientation.X = -Orientation.Z;
+		OutOrientation.Y = Orientation.X;
+		OutOrientation.Z = Orientation.Y;
+		OutOrientation.W = -Orientation.W;*/
+		UWorld* World = (WorldContextObject) ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull) : nullptr;
+		float WorldToMeters = ((World != nullptr) ? WorldToMeters = World->GetWorldSettings()->WorldToMeters : 100.f);
+
+		// Skipping checking the bool on loop
+		if (BlankActionToFill.bGetTransformsFacingYForward)
+		{
+			for (int i = 0; i < BoneTransforms.Num(); ++i)
+				BlankActionToFill.SkeletalTransforms[i] = CONVERT_STEAMTRANS_TO_FTRANS_Y(BoneTransforms[i], WorldToMeters);
+		}
+		else
+		{
+			for (int i = 0; i < BoneTransforms.Num(); ++i)
+				BlankActionToFill.SkeletalTransforms[i] = CONVERT_STEAMTRANS_TO_FTRANS(BoneTransforms[i], WorldToMeters);
+		}
+
+		BlankActionToFill.bHasValidData = true;
+		return true;
+#endif
+	}
 };	

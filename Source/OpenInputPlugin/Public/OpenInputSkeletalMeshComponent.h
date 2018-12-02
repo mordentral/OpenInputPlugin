@@ -72,6 +72,37 @@ struct TStructOpsTypeTraits< FSkeletalTransform_NetQuantize > : public TStructOp
 
 
 USTRUCT(BlueprintType, Category = "VRGestures")
+struct OPENINPUTPLUGIN_API FOpenInputGestureFingerPosition
+{
+	GENERATED_BODY()
+public:
+
+	// The Finger index, not editable
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "VRGesture")
+		EVROpenInputFingerIndexType IndexType;
+
+	// The value of this element 0.f - 1.f
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGesture")
+	float Value;
+
+	// The threshold within which this finger value will be detected as matching (1.0 would be always matching, IE: finger doesn't count)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGesture", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	float Threshold;
+
+	FOpenInputGestureFingerPosition(float CurlOrSplay, EVROpenInputFingerIndexType Type)
+	{
+		IndexType = Type;
+		Value = CurlOrSplay;
+		Threshold = 0.1f;
+	}
+	FOpenInputGestureFingerPosition()
+	{
+		Value = 0.f;
+		Threshold = 0.1f;
+	}
+};
+
+USTRUCT(BlueprintType, Category = "VRGestures")
 struct OPENINPUTPLUGIN_API FOpenInputGesture
 {
 	GENERATED_BODY()
@@ -82,19 +113,35 @@ public:
 		FString Name;
 
 	// Samples in the recorded gesture
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "VRGesture")
-		TArray<FTransform> BonePoses;
-
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGesture")
-		float Threshold;
+		TArray<FOpenInputGestureFingerPosition> FingerValues;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "VRGesture")
-		bool bWasRightHand;
+	// If we should only use the curl element for gesture detection
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGesture")
+		bool bUseFingerCurlOnly;
 
 	FOpenInputGesture()
 	{
-		Threshold = 2.0f;
-		bWasRightHand = false;
+		bUseFingerCurlOnly = false;
+		InitPoseValues();
+	}
+
+	FOpenInputGesture(bool bOnlyFingerCurl)
+	{
+		bUseFingerCurlOnly = bOnlyFingerCurl;
+		InitPoseValues();
+	}
+
+	void InitPoseValues()
+	{
+		int PoseCount = vr::VRFinger_Count;
+		if (!bUseFingerCurlOnly)
+			PoseCount += vr::VRFingerSplay_Count;
+
+		for (int i = 0; i < PoseCount; ++i)
+		{
+			FingerValues.Add(FOpenInputGestureFingerPosition(0.f, (EVROpenInputFingerIndexType)i));
+		}
 	}
 };
 
@@ -148,14 +195,24 @@ public:
 		UOpenInputGestureDatabase *GesturesDB;
 
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
-	void SaveCurrentPose(FString RecordingName)
+	void SaveCurrentPose(FString RecordingName, bool bUseFingerCurlOnly = true)
 	{
 		if (GesturesDB)
 		{
-			FOpenInputGesture NewGesture;
-			NewGesture.BonePoses = HandSkeletalAction.SkeletalTransforms;//SkeletalDataToSave.SkeletalTransforms;
+			FOpenInputGesture NewGesture(bUseFingerCurlOnly);
+
+			int i = 0;
+			for (; i < HandSkeletalAction.PoseFingerData.PoseFingerCurls.Num() && i < NewGesture.FingerValues.Num(); ++i)
+				NewGesture.FingerValues[i].Value = HandSkeletalAction.PoseFingerData.PoseFingerCurls[i];
+
+			if (!bUseFingerCurlOnly && HandSkeletalAction.PoseFingerData.PoseFingerSplays.Num() > 0)
+			{
+				for (; (i - vr::VRFinger_Count) < HandSkeletalAction.PoseFingerData.PoseFingerSplays.Num() && i < NewGesture.FingerValues.Num(); ++i)
+					NewGesture.FingerValues[i].Value = HandSkeletalAction.PoseFingerData.PoseFingerSplays[i - vr::VRFinger_Count];
+			}
+
+			NewGesture.bUseFingerCurlOnly = bUseFingerCurlOnly;
 			NewGesture.Name = RecordingName;
-			NewGesture.bWasRightHand = bIsForRightHand;
 			GesturesDB->Gestures.Add(NewGesture);
 		}
 	}
@@ -167,34 +224,35 @@ public:
 			return false;
 
 		for (const FOpenInputGesture& Gesture : GesturesDB->Gestures)
-		{
-			if (Gesture.BonePoses.Num() != HandSkeletalAction.SkeletalTransforms.Num())
+		{	
+			// If not enough indexs to match curl values, or if this gesture requires finger splay and the controller can't do it
+			if (Gesture.FingerValues.Num() < HandSkeletalAction.PoseFingerData.PoseFingerCurls.Num() ||
+				(!Gesture.bUseFingerCurlOnly && HandSkeletalAction.SkeletalTrackingLevel == EVROpenInputSkeletalTrackingLevel::VRSkeletalTracking_Full)
+				)
 				continue;
 
 
 			bool bDetectedPose = true;
-			for (int i=0; i < Gesture.BonePoses.Num(); i++)
+			for (int i=0; i < HandSkeletalAction.PoseFingerData.PoseFingerCurls.Num(); ++i)
 			{
-				switch (i)
+				
+				if (!FMath::IsNearlyEqual(HandSkeletalAction.PoseFingerData.PoseFingerCurls[i], Gesture.FingerValues[i].Value, Gesture.FingerValues[i].Threshold))
 				{
-				case EVROpenInputBones::eBone_Root:
-				case EVROpenInputBones::eBone_Aux_Thumb:
-				case EVROpenInputBones::eBone_Aux_IndexFinger:
-				case EVROpenInputBones::eBone_Aux_MiddleFinger:
-				case EVROpenInputBones::eBone_Aux_RingFinger:
-				case EVROpenInputBones::eBone_Aux_PinkyFinger:
-				{}break;
-				default:
+					bDetectedPose = false;
+					break;
+				}
+			}
+
+			if (bDetectedPose && !Gesture.bUseFingerCurlOnly && HandSkeletalAction.PoseFingerData.PoseFingerSplays.Num())
+			{
+				for (int i = 0; i < HandSkeletalAction.PoseFingerData.PoseFingerSplays.Num() && (i + vr::VRFinger_Count) < Gesture.FingerValues.Num(); ++i)
 				{
-					if (!HandSkeletalAction.SkeletalTransforms[i].Equals(Gesture.BonePoses[i], Gesture.Threshold))
+					if (!FMath::IsNearlyEqual(HandSkeletalAction.PoseFingerData.PoseFingerCurls[i], Gesture.FingerValues[i + vr::VRFinger_Count].Value, Gesture.FingerValues[i + vr::VRFinger_Count].Threshold))
 					{
 						bDetectedPose = false;
+						break;
 					}
-				}break;
 				}
-
-				if (!bDetectedPose)
-					break;
 			}
 
 			if (bDetectedPose)
@@ -217,37 +275,34 @@ public:
 
 		for (const FOpenInputGesture& Gesture : GesturesDB->Gestures)
 		{
-			if (Gesture.BonePoses.Num() != HandSkeletalAction.SkeletalTransforms.Num())
+			// If not enough indexs to match curl values, or if this gesture requires finger splay and the controller can't do it
+			if (Gesture.FingerValues.Num() < HandSkeletalAction.PoseFingerData.PoseFingerCurls.Num() ||
+				(!Gesture.bUseFingerCurlOnly && HandSkeletalAction.SkeletalTrackingLevel == EVROpenInputSkeletalTrackingLevel::VRSkeletalTracking_Full)
+				)
 				continue;
 
 
 			bool bDetectedPose = true;
-			for (int i = Gesture.BonePoses.Num() - 1; i >= 0; --i)
+			for (int i = 0; i < HandSkeletalAction.PoseFingerData.PoseFingerCurls.Num(); ++i)
 			{
-				switch (i)
+
+				if (!FMath::IsNearlyEqual(HandSkeletalAction.PoseFingerData.PoseFingerCurls[i], Gesture.FingerValues[i].Value, Gesture.FingerValues[i].Threshold))
 				{
-				case EVROpenInputBones::eBone_Root:
-				case EVROpenInputBones::eBone_Aux_Thumb:
-				case EVROpenInputBones::eBone_Aux_IndexFinger:
-				case EVROpenInputBones::eBone_Aux_MiddleFinger:
-				case EVROpenInputBones::eBone_Aux_RingFinger:
-				case EVROpenInputBones::eBone_Aux_PinkyFinger:
-				{}break;
-				default:
+					bDetectedPose = false;
+					break;
+				}
+			}
+
+			if (bDetectedPose && !Gesture.bUseFingerCurlOnly && HandSkeletalAction.PoseFingerData.PoseFingerSplays.Num())
+			{
+				for (int i = 0; i < HandSkeletalAction.PoseFingerData.PoseFingerSplays.Num() && (i + vr::VRFinger_Count) < Gesture.FingerValues.Num(); ++i)
 				{
-					BoneTransform = HandSkeletalAction.SkeletalTransforms[i];
-					if(bIsForRightHand != Gesture.bWasRightHand)
-						BoneTransform.Mirror(EAxis::Y, EAxis::Z);
-					
-					if (!BoneTransform.Equals(Gesture.BonePoses[i], Gesture.Threshold))
+					if (!FMath::IsNearlyEqual(HandSkeletalAction.PoseFingerData.PoseFingerCurls[i], Gesture.FingerValues[i + vr::VRFinger_Count].Value, Gesture.FingerValues[i + vr::VRFinger_Count].Threshold))
 					{
 						bDetectedPose = false;
+						break;
 					}
-				}break;
 				}
-
-				if (!bDetectedPose)
-					break;
 			}
 
 			if (bDetectedPose)
