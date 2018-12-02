@@ -231,7 +231,6 @@ public:
 				)
 				continue;
 
-
 			bool bDetectedPose = true;
 			for (int i=0; i < HandSkeletalAction.PoseFingerData.PoseFingerCurls.Num(); ++i)
 			{

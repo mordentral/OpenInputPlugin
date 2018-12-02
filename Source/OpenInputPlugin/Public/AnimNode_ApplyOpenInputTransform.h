@@ -32,6 +32,7 @@ public:
 		FName BoneToTarget;
 
 	FBoneReference ReferenceToConstruct;
+	int32 ParentIndex;
 
 	FBPOpenVRSkeletalPair()
 	{

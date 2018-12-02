@@ -140,10 +140,10 @@ public:
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 		FString ActionName;
 	
-	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
+	//UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 		bool bGetTransformsInParentSpace;
 
-	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
+	//UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 		bool bGetTransformsFacingYForward;
 
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
