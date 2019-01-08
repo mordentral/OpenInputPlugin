@@ -360,7 +360,7 @@ public:
 	UFUNCTION()
 		void OnUpdateSkeletalData();
 
-	UPROPERTY(EditAnywhere, Category = SkeletalData)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = SkeletalData)
 		bool bGetSkeletalTransforms_WithController;
 
 	UPROPERTY(EditAnywhere, Category = SkeletalData)
