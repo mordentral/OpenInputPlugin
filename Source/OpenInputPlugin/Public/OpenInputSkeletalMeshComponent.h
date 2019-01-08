@@ -363,7 +363,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = SkeletalData)
 		bool bGetSkeletalTransforms_WithController;
 
-	UPROPERTY(EditAnywhere, Category = SkeletalData)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = SkeletalData)
 	bool bIsForRightHand;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = SkeletalData,Replicated, ReplicatedUsing = OnRep_SkeletalTransforms)
