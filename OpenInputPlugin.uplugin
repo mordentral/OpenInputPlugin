@@ -27,6 +27,17 @@
 			]
 		},
 		{
+			"Name": "SteamVRController",
+			"Type": "RunTime",
+			"LoadingPhase": "Default",
+			"WhitelistPlatforms" :
+			[
+				"Win64",
+				"Win32",
+				"Linux"
+			]
+		},
+		{
 			"Name": "OpenInputPluginEditor",
 			"Type": "Editor",
 			"LoadingPhase": "PreDefault",
@@ -41,6 +52,10 @@
 	"Plugins": [
 		{
 			"Name": "VRExpansionPlugin",
+			"Enabled": true
+		},
+		{
+			"Name": "SteamVR",
 			"Enabled": true
 		}
 	]
