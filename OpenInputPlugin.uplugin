@@ -27,7 +27,7 @@
 			]
 		},
 		{
-			"Name": "SteamVRController",
+			"Name": "SteamVRInputController",
 			"Type": "RunTime",
 			"LoadingPhase": "Default",
 			"WhitelistPlatforms" :
