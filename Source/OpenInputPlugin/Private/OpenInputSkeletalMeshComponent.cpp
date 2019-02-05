@@ -122,15 +122,27 @@ void UOpenInputSkeletalMeshComponent::BeginPlay()
 	if (UGripMotionControllerComponent * MotionParent = Cast<UGripMotionControllerComponent>(GetAttachParent()))
 	{
 		EControllerHand HandType;
-		MotionParent->GetHandType(HandType);
+		if (!FXRMotionControllerBase::GetHandEnumForSourceName(MotionParent->MotionSource, HandType))
+		{
+			HandType = EControllerHand::Left;
+		}
 
 		if (HandType == EControllerHand::Left || HandType == EControllerHand::AnyHand)
 		{
 			bIsForRightHand = false;
+
+			if(HandSkeletalAction.ActionName.IsEmpty())
+				HandSkeletalAction.ActionName = FString("/actions/main/in/skeletonleft");
 		}
 		else
+		{
 			bIsForRightHand = true;
+
+			if (HandSkeletalAction.ActionName.IsEmpty())
+				HandSkeletalAction.ActionName = FString("/actions/main/in/skeletonright");
+		}
 	}
+
 	Super::BeginPlay();
 }
 
