@@ -39,7 +39,7 @@ public class OpenInputPlugin : ModuleRules
                // "HeadMountedDisplay",
                 "RHI",
                 "RenderCore",
-                "ShaderCore",
+               //"ShaderCore",
 				"AnimGraphRuntime",
                 "VRExpansionPlugin"
             });
