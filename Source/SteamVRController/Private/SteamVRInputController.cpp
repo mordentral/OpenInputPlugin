@@ -436,7 +436,7 @@ public:
 #if STEAMVRCONTROLLER_SUPPORTED_PLATFORMS
 	void SendActionInputEvents()
 	{
-		vr::IVRInput* VRInput = GetVRInput();
+		vr::IVRInput* VRInput = vr::VRInput();
 
 		if (VRInput != nullptr)
 		{
@@ -727,7 +727,7 @@ public:
 
 private:
 
-	inline vr::IVRInput* GetVRInput() const
+	/*inline vr::IVRInput* GetVRInput() const
 	{
 		if (SteamVRPlugin == nullptr)
 		{
@@ -735,7 +735,7 @@ private:
 		}
 
 		return SteamVRPlugin->GetVRInput();
-	}
+	}*/
 
 	inline vr::IVRSystem* GetVRSystem() const
 	{
@@ -1347,7 +1347,7 @@ private:
 	{
 		vr::IVRInput* VRInput;
 
-		if (bEnableVRInput && (VRInput = GetVRInput()) != nullptr)
+		if (bEnableVRInput && (VRInput = vr::VRInput()) != nullptr)
 		{
 			// Input Key Mappings - UE uses Action to Multiple Inputs, this needs to be reorganized to match 
 			// Valve's which is Input to multiple actions
