@@ -119,7 +119,7 @@ void UOpenInputSkeletalMeshComponent::OnUnregister()
 void UOpenInputSkeletalMeshComponent::BeginPlay()
 {
 
-	if (UGripMotionControllerComponent * MotionParent = Cast<UGripMotionControllerComponent>(GetAttachParent()))
+	if (UMotionControllerComponent * MotionParent = Cast<UMotionControllerComponent>(GetAttachParent()))
 	{
 		EControllerHand HandType;
 		if (!FXRMotionControllerBase::GetHandEnumForSourceName(MotionParent->MotionSource, HandType))
