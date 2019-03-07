@@ -32,15 +32,17 @@ public:
 		FName BoneToTarget;
 
 	FBoneReference ReferenceToConstruct;
-	int32 ParentIndex;
+	FCompactPoseBoneIndex ParentReference;
 
-	FBPOpenVRSkeletalPair()
+	FBPOpenVRSkeletalPair() :
+		ParentReference(INDEX_NONE)
 	{
 		OpenVRBone = EVROpenInputBones::eBone_Root;
 		BoneToTarget = NAME_None;
 	}
 
-	FBPOpenVRSkeletalPair(EVROpenInputBones Bone, FString TargetBone)
+	FBPOpenVRSkeletalPair(EVROpenInputBones Bone, FString TargetBone) :
+		ParentReference(INDEX_NONE)
 	{
 		OpenVRBone = Bone;
 		BoneToTarget = FName(*TargetBone);
