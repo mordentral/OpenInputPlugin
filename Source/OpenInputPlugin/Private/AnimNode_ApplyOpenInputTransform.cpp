@@ -108,6 +108,8 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 
 	FTransform TempTrans = FTransform::Identity;
 
+	TMap<int32, FTransform> ParentTransformArray;
+
 	for (const FBPOpenVRSkeletalPair& BonePair : MappedBonePairs.BonePairs)
 	{
 		BoneTransIndex = (int8)BonePair.OpenVRBone;
@@ -125,8 +127,17 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 		FTransform ParentTrans = FTransform::Identity;
 		if (StoredActionInfoPtr->bGetTransformsInParentSpace && BonePair.ParentReference != INDEX_NONE)
 		{
-			ParentTrans = Output.Pose.GetComponentSpaceTransform(BonePair.ParentReference);
-			ParentTrans.SetScale3D(FVector(1.f));
+			if (ParentTransformArray.Contains(BonePair.ParentReference.GetInt()))
+			{
+				ParentTrans = ParentTransformArray[BonePair.ParentReference.GetInt()];
+				//ParentTrans.SetScale3D(FVector(1.f));
+			}
+			else
+			{
+				ParentTrans = Output.Pose.GetComponentSpaceTransform(BonePair.ParentReference);
+				ParentTrans.SetScale3D(FVector(1.f));
+				ParentTransformArray.Add(BonePair.ParentReference.GetInt(), ParentTrans);
+			}
 		}
 
 		// #TODO: For non hand meshes need to filter this by first openVR index not skeletal index in the future
@@ -134,26 +145,47 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 		{
 			if (StoredActionInfoPtr->bAllowDeformingMesh)
 			{
-				TempTrans = (RootAdditionTransform * StoredActionInfoPtr->SkeletalTransforms[BoneTransIndex]) * ParentTrans;// *ParentTrans;
+				TempTrans = (StoredActionInfoPtr->SkeletalTransforms[BoneTransIndex]) * ParentTrans;// *ParentTrans;
 				trans.SetTranslation(TempTrans.GetTranslation());
 				trans.SetRotation(TempTrans.GetRotation());
+
+				if (StoredActionInfoPtr->bGetTransformsInParentSpace)
+					ParentTransformArray.Add(BonePair.ReferenceToConstruct.CachedCompactPoseIndex.GetInt(), trans);
+
+				trans = RootAdditionTransform * trans;
+
 			}
 			else
 			{		
-				trans.SetRotation(ParentTrans.GetRotation() * StoredActionInfoPtr->SkeletalTransforms[BoneTransIndex].GetRotation() * RootAdditionTransform.GetRotation());
+				trans.SetRotation(ParentTrans.GetRotation() * StoredActionInfoPtr->SkeletalTransforms[BoneTransIndex].GetRotation());
+
+				if (StoredActionInfoPtr->bGetTransformsInParentSpace)
+					ParentTransformArray.Add(BonePair.ReferenceToConstruct.CachedCompactPoseIndex.GetInt(), trans);
+
+				trans.ConcatenateRotation(RootAdditionTransform.GetRotation());
 			}
 		}
 		else
 		{
 			if (StoredActionInfoPtr->bAllowDeformingMesh)
 			{
-				TempTrans = (/*AdditionTransform * */StoredActionInfoPtr->SkeletalTransforms[BoneTransIndex]) * ParentTrans;// *ParentTrans;
+				TempTrans = (StoredActionInfoPtr->SkeletalTransforms[BoneTransIndex]) * ParentTrans;// *ParentTrans;
 				trans.SetTranslation(TempTrans.GetTranslation());
 				trans.SetRotation(TempTrans.GetRotation());
+
+				if (StoredActionInfoPtr->bGetTransformsInParentSpace)
+					ParentTransformArray.Add(BonePair.ReferenceToConstruct.CachedCompactPoseIndex.GetInt(), trans);
+
+				trans = AdditionTransform * trans;
 			}
 			else
 			{
-				trans.SetRotation(ParentTrans.GetRotation() * StoredActionInfoPtr->SkeletalTransforms[BoneTransIndex].GetRotation() * AdditionTransform.GetRotation());
+				trans.SetRotation(ParentTrans.GetRotation() * StoredActionInfoPtr->SkeletalTransforms[BoneTransIndex].GetRotation());
+
+				if (StoredActionInfoPtr->bGetTransformsInParentSpace)
+					ParentTransformArray.Add(BonePair.ReferenceToConstruct.CachedCompactPoseIndex.GetInt(), trans);
+
+				trans.ConcatenateRotation(AdditionTransform.GetRotation());
 			}
 		}
 

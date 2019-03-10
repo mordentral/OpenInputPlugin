@@ -51,6 +51,10 @@ void UOpenInputSkeletalMeshComponent::NewControllerProfileLoaded()
 
 void UOpenInputSkeletalMeshComponent::GetCurrentProfileTransform(bool bBindToNoticationDelegate)
 {
+	// Don't run this logic if we aren't parented to a controller
+	if(!GetAttachParent() || !GetAttachParent()->IsA(UMotionControllerComponent::StaticClass()))
+		return;
+
 	// Need to rep this offset to the server and then down to remote clients as well, otherwise it will not perform correctly
 	if (bOffsetByControllerProfile)
 	{
@@ -128,19 +132,21 @@ void UOpenInputSkeletalMeshComponent::BeginPlay()
 		}
 
 		if (HandType == EControllerHand::Left || HandType == EControllerHand::AnyHand)
-		{
 			bIsForRightHand = false;
-
-			if(HandSkeletalAction.ActionName.IsEmpty())
-				HandSkeletalAction.ActionName = FString("/actions/main/in/skeletonleft");
-		}
 		else
-		{
 			bIsForRightHand = true;
 
-			if (HandSkeletalAction.ActionName.IsEmpty())
-				HandSkeletalAction.ActionName = FString("/actions/main/in/skeletonright");
-		}
+	}
+
+	if (!bIsForRightHand)
+	{
+		if (HandSkeletalAction.ActionName.IsEmpty())
+			HandSkeletalAction.ActionName = FString("/actions/main/in/skeletonleft");
+	}
+	else
+	{
+		if (HandSkeletalAction.ActionName.IsEmpty())
+			HandSkeletalAction.ActionName = FString("/actions/main/in/skeletonright");
 	}
 
 	Super::BeginPlay();
