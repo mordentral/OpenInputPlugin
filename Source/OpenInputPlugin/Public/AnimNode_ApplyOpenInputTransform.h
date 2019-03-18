@@ -32,15 +32,17 @@ public:
 		FName BoneToTarget;
 
 	FBoneReference ReferenceToConstruct;
-	int32 ParentIndex;
+	FCompactPoseBoneIndex ParentReference;
 
-	FBPOpenVRSkeletalPair()
+	FBPOpenVRSkeletalPair() :
+		ParentReference(INDEX_NONE)
 	{
 		OpenVRBone = EVROpenInputBones::eBone_Root;
 		BoneToTarget = NAME_None;
 	}
 
-	FBPOpenVRSkeletalPair(EVROpenInputBones Bone, FString TargetBone)
+	FBPOpenVRSkeletalPair(EVROpenInputBones Bone, FString TargetBone) :
+		ParentReference(INDEX_NONE)
 	{
 		OpenVRBone = Bone;
 		BoneToTarget = FName(*TargetBone);
@@ -57,112 +59,142 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Default")
 		TArray<FBPOpenVRSkeletalPair> BonePairs;
 
+	// Merge the transforms of bones that are missing from the OpenVR skeleton to the UE4 one.
+	// This should be always enabled for UE4 skeletons generally.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Default")
-		bool bMergeRootAndWristBones;
+	bool bMergeMissingBonesUE4;
+
+	// The hand data to get, if not using a custom bone mapping then this value will be auto filled
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Default")
+		EVRActionHand TargetHand;
 
 	bool bInitialized;
 
-	void ConstructDefaultMappings(EVROpenVRSkeletonType SkeletonType)
+	void ConstructDefaultMappings(EVROpenVRSkeletonType SkeletonType, bool bSkipRootBone)
 	{
-
 		switch (SkeletonType)
 		{
 
 		case EVROpenVRSkeletonType::OVR_SkeletonType_OpenVRDefault_Left:
 		case EVROpenVRSkeletonType::OVR_SkeletonType_OpenVRDefault_Right:
 		{
-			bMergeRootAndWristBones = false;
-
-			FString HandDelimiterS = SkeletonType == EVROpenVRSkeletonType::OVR_SkeletonType_OpenVRDefault_Left ? "l" : "r";
-			const TCHAR* HandDelimiter = *HandDelimiterS;
-			// Default OpenVR bones mapping
-
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Root, FString::Printf(TEXT("Root"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Wrist, FString::Printf(TEXT("wrist_%s"), HandDelimiter)));
-
-
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Thumb0, FString::Printf(TEXT("finger_thumb_0_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Thumb1, FString::Printf(TEXT("finger_thumb_1_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Thumb2, FString::Printf(TEXT("finger_thumb_2_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Thumb3, FString::Printf(TEXT("finger_thumb_%s_end"), HandDelimiter)));
-
-
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_IndexFinger0, FString::Printf(TEXT("finger_index_meta_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_IndexFinger1, FString::Printf(TEXT("finger_index_0_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_IndexFinger2, FString::Printf(TEXT("finger_index_1_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_IndexFinger3, FString::Printf(TEXT("finger_index_2_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_IndexFinger4, FString::Printf(TEXT("finger_index_%s_end"), HandDelimiter)));
-
-
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_MiddleFinger0, FString::Printf(TEXT("finger_middle_meta_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_MiddleFinger1, FString::Printf(TEXT("finger_middle_0_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_MiddleFinger2, FString::Printf(TEXT("finger_middle_1_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_MiddleFinger3, FString::Printf(TEXT("finger_middle_2_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_MiddleFinger4, FString::Printf(TEXT("finger_middle_%s_end"), HandDelimiter)));
-			
-
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_RingFinger0, FString::Printf(TEXT("finger_ring_meta_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_RingFinger1, FString::Printf(TEXT("finger_ring_0_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_RingFinger2, FString::Printf(TEXT("finger_ring_1_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_RingFinger3, FString::Printf(TEXT("finger_ring_2_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_RingFinger4, FString::Printf(TEXT("finger_ring_%s_end"), HandDelimiter)));
-
-
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_PinkyFinger0, FString::Printf(TEXT("finger_pinky_meta_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_PinkyFinger1, FString::Printf(TEXT("finger_pinky_0_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_PinkyFinger2, FString::Printf(TEXT("finger_pinky_1_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_PinkyFinger3, FString::Printf(TEXT("finger_pinky_2_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_PinkyFinger4, FString::Printf(TEXT("finger_pinky_%s_end"), HandDelimiter)));
-
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Aux_Thumb, FString::Printf(TEXT("finger_thumb_%s_aux"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Aux_IndexFinger, FString::Printf(TEXT("finger_index_%s_aux"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Aux_MiddleFinger, FString::Printf(TEXT("finger_middle_%s_aux"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Aux_RingFinger, FString::Printf(TEXT("finger_ring_%s_aux"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Aux_PinkyFinger, FString::Printf(TEXT("finger_pinky_%s_aux"), HandDelimiter)));
+			bMergeMissingBonesUE4 = false;
+			SetDefaultOpenVRInputs(SkeletonType, bSkipRootBone);
 		}break;
-
 		case EVROpenVRSkeletonType::OVR_SkeletonType_UE4Default_Left:
 		case EVROpenVRSkeletonType::OVR_SkeletonType_UE4Default_Right:
-		default:
 		{
-			bMergeRootAndWristBones = true;
-
-			FString HandDelimiterS = SkeletonType == EVROpenVRSkeletonType::OVR_SkeletonType_UE4Default_Left ? "l" : "r";
-			const TCHAR* HandDelimiter = *HandDelimiterS;
-
-			// Default ue4 skeleton hand to the OpenVR bones, skipping the extra joint and the aux joints
-
-			//BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Root, FString::Printf(TEXT("hand_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Wrist, FString::Printf(TEXT("hand_%s"), HandDelimiter)));
-
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_IndexFinger1, FString::Printf(TEXT("index_01_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_IndexFinger2, FString::Printf(TEXT("index_02_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_IndexFinger3, FString::Printf(TEXT("index_03_%s"), HandDelimiter)));
-
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_MiddleFinger1, FString::Printf(TEXT("middle_01_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_MiddleFinger2, FString::Printf(TEXT("middle_02_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_MiddleFinger3, FString::Printf(TEXT("middle_03_%s"), HandDelimiter)));
-
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_PinkyFinger1, FString::Printf(TEXT("pinky_01_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_PinkyFinger2, FString::Printf(TEXT("pinky_02_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_PinkyFinger3, FString::Printf(TEXT("pinky_03_%s"), HandDelimiter)));
-
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_RingFinger1, FString::Printf(TEXT("ring_01_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_RingFinger2, FString::Printf(TEXT("ring_02_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_RingFinger3, FString::Printf(TEXT("ring_03_%s"), HandDelimiter)));
-
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Thumb0, FString::Printf(TEXT("thumb_01_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Thumb1, FString::Printf(TEXT("thumb_02_%s"), HandDelimiter)));
-			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Thumb2, FString::Printf(TEXT("thumb_03_%s"), HandDelimiter)));
-
+			bMergeMissingBonesUE4 = true;
+			SetDefaultUE4Inputs(SkeletonType, bSkipRootBone);
 		}break;
 		}
+	}
+
+	void SetDefaultOpenVRInputs(EVROpenVRSkeletonType cSkeletonType, bool bSkipRootBone)
+	{
+		// Don't map anything if the end user already has
+		if (BonePairs.Num())
+			return;
+
+		bool bIsRightHand = cSkeletonType != EVROpenVRSkeletonType::OVR_SkeletonType_OpenVRDefault_Left;
+		FString HandDelimiterS = !bIsRightHand ? "l" : "r";
+		const TCHAR* HandDelimiter = *HandDelimiterS;
+
+		TargetHand = bIsRightHand ? EVRActionHand::EActionHand_Right : EVRActionHand::EActionHand_Left;
+
+		// Default OpenVR bones mapping
+		if (!bSkipRootBone)
+		{
+			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Root, FString::Printf(TEXT("Root"), HandDelimiter)));
+		}
+
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Wrist, FString::Printf(TEXT("wrist_%s"), HandDelimiter)));
+
+
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Thumb0, FString::Printf(TEXT("finger_thumb_0_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Thumb1, FString::Printf(TEXT("finger_thumb_1_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Thumb2, FString::Printf(TEXT("finger_thumb_2_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Thumb3, FString::Printf(TEXT("finger_thumb_%s_end"), HandDelimiter)));
+
+
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_IndexFinger0, FString::Printf(TEXT("finger_index_meta_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_IndexFinger1, FString::Printf(TEXT("finger_index_0_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_IndexFinger2, FString::Printf(TEXT("finger_index_1_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_IndexFinger3, FString::Printf(TEXT("finger_index_2_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_IndexFinger4, FString::Printf(TEXT("finger_index_%s_end"), HandDelimiter)));
+
+
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_MiddleFinger0, FString::Printf(TEXT("finger_middle_meta_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_MiddleFinger1, FString::Printf(TEXT("finger_middle_0_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_MiddleFinger2, FString::Printf(TEXT("finger_middle_1_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_MiddleFinger3, FString::Printf(TEXT("finger_middle_2_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_MiddleFinger4, FString::Printf(TEXT("finger_middle_%s_end"), HandDelimiter)));
+
+
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_RingFinger0, FString::Printf(TEXT("finger_ring_meta_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_RingFinger1, FString::Printf(TEXT("finger_ring_0_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_RingFinger2, FString::Printf(TEXT("finger_ring_1_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_RingFinger3, FString::Printf(TEXT("finger_ring_2_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_RingFinger4, FString::Printf(TEXT("finger_ring_%s_end"), HandDelimiter)));
+
+
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_PinkyFinger0, FString::Printf(TEXT("finger_pinky_meta_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_PinkyFinger1, FString::Printf(TEXT("finger_pinky_0_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_PinkyFinger2, FString::Printf(TEXT("finger_pinky_1_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_PinkyFinger3, FString::Printf(TEXT("finger_pinky_2_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_PinkyFinger4, FString::Printf(TEXT("finger_pinky_%s_end"), HandDelimiter)));
+
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Aux_Thumb, FString::Printf(TEXT("finger_thumb_%s_aux"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Aux_IndexFinger, FString::Printf(TEXT("finger_index_%s_aux"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Aux_MiddleFinger, FString::Printf(TEXT("finger_middle_%s_aux"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Aux_RingFinger, FString::Printf(TEXT("finger_ring_%s_aux"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Aux_PinkyFinger, FString::Printf(TEXT("finger_pinky_%s_aux"), HandDelimiter)));
+	}
+
+	void SetDefaultUE4Inputs(EVROpenVRSkeletonType cSkeletonType, bool bSkipRootBone)
+	{
+		// Don't map anything if the end user already has
+		if (BonePairs.Num())
+			return;
+
+		bool bIsRightHand = cSkeletonType != EVROpenVRSkeletonType::OVR_SkeletonType_UE4Default_Left;
+		FString HandDelimiterS = !bIsRightHand ? "l" : "r";
+		const TCHAR* HandDelimiter = *HandDelimiterS;
+
+		TargetHand = bIsRightHand ? EVRActionHand::EActionHand_Right : EVRActionHand::EActionHand_Left;
+
+		// Default ue4 skeleton hand to the OpenVR bones, skipping the extra joint and the aux joints
+		if (!bSkipRootBone)
+		{
+			//BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Root, FString::Printf(TEXT("hand_%s"), HandDelimiter)));
+			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Wrist, FString::Printf(TEXT("hand_%s"), HandDelimiter)));
+		}
+
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_IndexFinger1, FString::Printf(TEXT("index_01_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_IndexFinger2, FString::Printf(TEXT("index_02_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_IndexFinger3, FString::Printf(TEXT("index_03_%s"), HandDelimiter)));
+
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_MiddleFinger1, FString::Printf(TEXT("middle_01_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_MiddleFinger2, FString::Printf(TEXT("middle_02_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_MiddleFinger3, FString::Printf(TEXT("middle_03_%s"), HandDelimiter)));
+
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_PinkyFinger1, FString::Printf(TEXT("pinky_01_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_PinkyFinger2, FString::Printf(TEXT("pinky_02_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_PinkyFinger3, FString::Printf(TEXT("pinky_03_%s"), HandDelimiter)));
+
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_RingFinger1, FString::Printf(TEXT("ring_01_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_RingFinger2, FString::Printf(TEXT("ring_02_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_RingFinger3, FString::Printf(TEXT("ring_03_%s"), HandDelimiter)));
+
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Thumb0, FString::Printf(TEXT("thumb_01_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Thumb1, FString::Printf(TEXT("thumb_02_%s"), HandDelimiter)));
+		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Thumb2, FString::Printf(TEXT("thumb_03_%s"), HandDelimiter)));
 	}
 
 	FBPSkeletalMappingData()
 	{
 		bInitialized = false;
-		bMergeRootAndWristBones = false;
+		bMergeMissingBonesUE4 = false;
 	}
 };
 
@@ -183,10 +215,14 @@ public:
 	// Generally used when not passing in custom bone mappings, defines the auto mapping style
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Skeletal, meta = (PinShownByDefault))
 		EVROpenVRSkeletonType SkeletonType;
+
+	// If your hand is part of a full body or arm skeleton and you don't have a proxy bone to retain the position enable this
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Skeletal, meta = (PinShownByDefault))
+		bool bSkipRootBone;
 	
 	// Generally used when not passing in custom bone mappings, defines the auto mapping style
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Skeletal, meta = (PinShownByDefault))
-	FBPOpenVRActionInfo OptionalStoredActionInfo;
+		FBPOpenVRActionSkeletalData OptionalStoredActionInfo;
 
 	bool bIsOpenInputAnimationInstance;
 

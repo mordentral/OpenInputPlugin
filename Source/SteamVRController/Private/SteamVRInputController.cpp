@@ -113,7 +113,6 @@ struct FSteamVRAction
 	EActionType	Type;
 	bool		Requirement;
 	FName		Name;
-	FString		Skel;
 	FName		ActionKey_X;
 	FName		ActionKey_Y;
 	FName		ActionKey_Z;
@@ -146,7 +145,6 @@ struct FSteamVRAction
 		, Type(Boolean)
 		, Requirement(false)
 		, Name(inName)
-		, Skel()
 		, ActionKey_X(inActionKey)
 		, ActionKey_Y()
 		, ActionKey_Z()
@@ -162,7 +160,6 @@ struct FSteamVRAction
 		, Type(Vector1)
 		, Requirement(false)
 		, Name(inName)
-		, Skel()
 		, ActionKey_X(inActionKey)
 		, ActionKey_Y()
 		, ActionKey_Z()
@@ -176,7 +173,6 @@ struct FSteamVRAction
 		, Type(Vector2)
 		, Requirement(false)
 		, Name(inName)
-		, Skel()
 		, ActionKey_X(inActionKey_X)
 		, ActionKey_Y(inActionKey_Y)
 		, ActionKey_Z()
@@ -190,7 +186,6 @@ struct FSteamVRAction
 		, Type(Vector2)
 		, Requirement(false)
 		, Name(inName)
-		, Skel()
 		, ActionKey_X(inActionKey_X)
 		, ActionKey_Y(inActionKey_Y)
 		, ActionKey_Z(inActionKey_Z)
@@ -204,7 +199,6 @@ struct FSteamVRAction
 		, Type(inActionType)
 		, Requirement(inRequirement)
 		, Name(inName)
-		, Skel()
 		, ActionKey_X()
 		, ActionKey_Y()
 		, ActionKey_Z()
@@ -213,13 +207,12 @@ struct FSteamVRAction
 		, LastError(vr::VRInputError_None)
 	{}
 
-	FSteamVRAction(const FString& inPath, const EActionType& inActionType, const bool& inRequirement, const FName& inName, const FString& inSkeleton)
+	// Skeletal action constructor
+	FSteamVRAction(const FString& inPath, const FName& inName, const FName& inActionKey)
 		: Path(inPath)
-		, Type(inActionType)
-		, Requirement(inRequirement)
+		, Type(Skeleton)
 		, Name(inName)
-		, Skel(inSkeleton)
-		, ActionKey_X()
+		, ActionKey_X(inActionKey)
 		, ActionKey_Y()
 		, ActionKey_Z()
 		, Value()
@@ -436,7 +429,7 @@ public:
 #if STEAMVRCONTROLLER_SUPPORTED_PLATFORMS
 	void SendActionInputEvents()
 	{
-		vr::IVRInput* VRInput = GetVRInput();
+		vr::IVRInput* VRInput = vr::VRInput();
 
 		if (VRInput != nullptr)
 		{
@@ -727,16 +720,6 @@ public:
 
 private:
 
-	inline vr::IVRInput* GetVRInput() const
-	{
-		if (SteamVRPlugin == nullptr)
-		{
-			SteamVRPlugin = &FModuleManager::LoadModuleChecked<ISteamVRPlugin>(TEXT("SteamVR"));
-		}
-
-		return SteamVRPlugin->GetVRInput();
-	}
-
 	inline vr::IVRSystem* GetVRSystem() const
 	{
 		if (SteamVRPlugin == nullptr)
@@ -797,6 +780,8 @@ private:
 			case vr::TrackedDeviceClass_HMD:
 				// falls through
 			case vr::TrackedDeviceClass_TrackingReference:
+				// falls through
+			case vr::TrackedDeviceClass_DisplayRedirect:
 				break;
 			default:
 				UE_LOG(LogSteamVRInputController, Warning, TEXT("Encountered unsupported device class of %i!"), (int32)DeviceClass);
@@ -1149,184 +1134,13 @@ private:
 
 			// Creating a minimal bindings file without any bindings will allow editing it in the SteamVR bindings tool
 			TSharedRef<FJsonObject> BindingsStub = MakeShareable(new FJsonObject());
+			TSharedRef<FJsonObject> EmptyJsonObject = MakeShareable(new FJsonObject());
 			BindingsStub->SetStringField(TEXT("name"), *FText::Format(NSLOCTEXT("SteamVR", "DefaultBindingsFor", "Default bindings for {0}"), Item.Value).ToString());
 			BindingsStub->SetStringField(TEXT("controller_type"), Item.Key);
 
-			TArray<TSharedPtr<FJsonValue>> JsonValuesArray;
-			
-			for (int i=0; i < InInputMapping.Num(); i++)
-			{
-				// Create Action Input
-				TSharedRef<FJsonObject> ActionInputJsonObject = MakeShareable(new FJsonObject());
-				//ActionInputJsonObject->SetObjectField(TEXT("force"), ActionPathJsonObject);
-
-				// TODO: Bitmask - consider button press abstractions; perhaps several enums?
-				// Set Input Type
-				bool bIsAxis;
-				bool bIsTrigger;
-				bool bIsThumbstick;
-				bool bIsTrackpad;
-				bool bIsGrip;
-				bool bIsCapSense;
-				bool bIsLeft;
-				bool bIsFaceButton1;   // TODO: Better way of abstracting buttons
-				bool bIsFaceButton2;
-
-				// Set Cache Vars
-				FName CacheMode;
-				FString CacheType;
-				FString CachePath;
-
-				if (InInputMapping[i].InputKey.ToString().Contains(TEXT("Thumbstick_X"), ESearchCase::CaseSensitive, ESearchDir::FromEnd) ||
-					InInputMapping[i].InputKey.ToString().Contains(TEXT("Thumbstick_Y"), ESearchCase::CaseSensitive, ESearchDir::FromEnd) ||
-					InInputMapping[i].InputKey.ToString().Contains(TEXT("Trackpad_X"), ESearchCase::CaseSensitive, ESearchDir::FromEnd) ||
-					InInputMapping[i].InputKey.ToString().Contains(TEXT("Trackpad_Y"), ESearchCase::CaseSensitive, ESearchDir::FromEnd) ||
-					InInputMapping[i].InputKey.ToString().Contains(TEXT("Grip"), ESearchCase::CaseSensitive, ESearchDir::FromEnd) ||
-					InInputMapping[i].InputKey.ToString().Contains(TEXT("Axis"), ESearchCase::CaseSensitive, ESearchDir::FromEnd))
-				{
-					bIsAxis = true;
-				}
-				else
-				{
-					bIsAxis = false;
-				}
-
-				bIsTrigger = InInputMapping[i].InputKey.ToString().Contains(TEXT("Trigger"), ESearchCase::CaseSensitive, ESearchDir::FromEnd);
-				bIsThumbstick = InInputMapping[i].InputKey.ToString().Contains(TEXT("Thumbstick"), ESearchCase::CaseSensitive, ESearchDir::FromEnd);
-				bIsTrackpad = InInputMapping[i].InputKey.ToString().Contains(TEXT("Trackpad"), ESearchCase::CaseSensitive, ESearchDir::FromEnd);
-				bIsGrip = InInputMapping[i].InputKey.ToString().Contains(TEXT("Grip"), ESearchCase::CaseSensitive, ESearchDir::FromEnd);
-				bIsCapSense = InInputMapping[i].InputKey.ToString().Contains(TEXT("CapSense"), ESearchCase::CaseSensitive, ESearchDir::FromEnd);
-				bIsLeft = InInputMapping[i].InputKey.ToString().Contains(TEXT("Left"), ESearchCase::CaseSensitive, ESearchDir::FromEnd);
-				bIsFaceButton1 = InInputMapping[i].InputKey.ToString().Contains(TEXT("FaceButton1"), ESearchCase::CaseSensitive, ESearchDir::FromEnd);
-				bIsFaceButton2 = InInputMapping[i].InputKey.ToString().Contains(TEXT("FaceButton2"), ESearchCase::CaseSensitive, ESearchDir::FromEnd);
-
-				// Set Cache Mode
-				CacheMode = bIsTrigger || bIsGrip ? FName(TEXT("trigger")) : FName(TEXT("button"));
-				CacheMode = bIsGrip ? FName(TEXT("force_sensor")) : CacheMode;
-				CacheMode = bIsThumbstick ? FName(TEXT("joystick")) : CacheMode;
-				CacheMode = bIsTrackpad ? FName(TEXT("trackpad")) : CacheMode;
-
-				// Set Cache Path
-				if (bIsTrigger)
-				{
-					CachePath = bIsLeft ? FString(TEXT("/user/hand/left/input/trigger")) : FString(TEXT("/user/hand/right/input/trigger"));
-				}
-				else if (bIsThumbstick)
-				{
-					CachePath = bIsLeft ? FString(TEXT("/user/hand/left/input/thumbstick")) : FString(TEXT("/user/hand/right/input/thumbstick"));
-				}
-				else if (bIsTrackpad)
-				{
-					CachePath = bIsLeft ? FString(TEXT("/user/hand/left/input/trackpad")) : FString(TEXT("/user/hand/right/input/trackpad"));
-				}
-				else if (bIsGrip)
-				{
-					CachePath = bIsLeft ? FString(TEXT("/user/hand/left/input/grip")) : FString(TEXT("/user/hand/right/input/grip"));
-				}
-				else if (bIsFaceButton1)
-				{
-					CachePath = bIsLeft ? FString(TEXT("/user/hand/left/input/a")) : FString(TEXT("/user/hand/right/input/a"));
-				}
-				else if (bIsFaceButton2)
-				{
-					CachePath = bIsLeft ? FString(TEXT("/user/hand/left/input/b")) : FString(TEXT("/user/hand/right/input/b"));
-				}
-
-				// Create Action Source
-				FActionSource ActionSource = FActionSource(CacheMode, CachePath);
-				TSharedRef<FJsonObject> ActionSourceJsonObject = MakeShareable(new FJsonObject());
-				ActionSourceJsonObject->SetStringField(TEXT("mode"), ActionSource.Mode.ToString());
-
-				// Set Action Path
-				ActionSourceJsonObject->SetStringField(TEXT("path"), ActionSource.Path);
-
-				// Set Key Mappings
-				for (FString Action : InInputMapping[i].Actions)
-				{
-					// Create Action Path
-					FActionPath ActionPath = FActionPath(Action);
-					TSharedRef<FJsonObject> ActionPathJsonObject = MakeShareable(new FJsonObject());
-					ActionPathJsonObject->SetStringField(TEXT("output"), ActionPath.Path);
-
-					// Set Cache Type
-					if (bIsAxis)
-					{
-						CacheType = (bIsThumbstick || bIsTrackpad) ? FString(TEXT("position")) : FString(TEXT("pull"));
-						CacheType = (bIsGrip) ? FString(TEXT("force")) : CacheType;
-					}
-					else
-					{
-						CacheType = (bIsCapSense) ? FString(TEXT("touch")) : FString(TEXT("click"));
-					}
-
-					// Set Action Input Type
-					ActionInputJsonObject->SetObjectField(CacheType, ActionPathJsonObject);
-				}
-
-				// Set Inputs
-				ActionSourceJsonObject->SetObjectField(TEXT("inputs"), ActionInputJsonObject);
-
-				// Add to Sources Array
-				TSharedRef<FJsonValueObject> JsonValueObject = MakeShareable(new FJsonValueObject(ActionSourceJsonObject));
-				JsonValuesArray.Add(JsonValueObject);
-			}
-
-			//Create Action Set
-			TSharedRef<FJsonObject> ActionSetJsonObject = MakeShareable(new FJsonObject());
-			ActionSetJsonObject->SetArrayField(TEXT("sources"), JsonValuesArray);
-
-			// TODO: Read from mappings instead (lowpri) - perhaps more efficient pulling from template file?
-			// TODO: Only generate for supported controllers
-			// Add Skeleton Mappings
-			TArray<TSharedPtr<FJsonValue>> SkeletonValuesArray;
-
-			// Left Hand 
-			TSharedRef<FJsonObject> SkeletonLeftJsonObject = MakeShareable(new FJsonObject());
-			SkeletonLeftJsonObject->SetStringField(TEXT("output"), TEXT("/actions/main/in/skeletonleft"));
-			SkeletonLeftJsonObject->SetStringField(TEXT("path"), TEXT("/user/hand/left/input/skeleton/left"));
-
-			TSharedRef<FJsonValueObject> SkeletonLeftJsonValueObject = MakeShareable(new FJsonValueObject(SkeletonLeftJsonObject));
-			SkeletonValuesArray.Add(SkeletonLeftJsonValueObject);
-
-			// Right Hand
-			TSharedRef<FJsonObject> SkeletonRightJsonObject = MakeShareable(new FJsonObject());
-			SkeletonRightJsonObject->SetStringField(TEXT("output"), TEXT("/actions/main/in/skeletonright"));
-			SkeletonRightJsonObject->SetStringField(TEXT("path"), TEXT("/user/hand/right/input/skeleton/right"));
-
-			TSharedRef<FJsonValueObject> SkeletonRightJsonValueObject = MakeShareable(new FJsonValueObject(SkeletonRightJsonObject));
-			SkeletonValuesArray.Add(SkeletonRightJsonValueObject);
-
-			// Add Skeleton Input Array To Action Set
-			ActionSetJsonObject->SetArrayField(TEXT("skeleton"), SkeletonValuesArray);
-
-			// TODO: Read from mappings instead (lowpri) - see similar note to Skeleton Mappings
-			// Add Haptic Mappings
-			TArray<TSharedPtr<FJsonValue>> HapticValuesArray;
-
-			// Left Haptic 
-			TSharedRef<FJsonObject> HapticLeftJsonObject = MakeShareable(new FJsonObject());
-			HapticLeftJsonObject->SetStringField(TEXT("output"), TEXT("/actions/main/out/vibrateleft"));
-			HapticLeftJsonObject->SetStringField(TEXT("path"), TEXT("/user/hand/left/output/haptic"));
-
-			TSharedRef<FJsonValueObject> HapticLeftJsonValueObject = MakeShareable(new FJsonValueObject(HapticLeftJsonObject));
-			HapticValuesArray.Add(HapticLeftJsonValueObject);
-
-			// Right Haptic
-			TSharedRef<FJsonObject> HapticRightJsonObject = MakeShareable(new FJsonObject());
-			HapticRightJsonObject->SetStringField(TEXT("output"), TEXT("/actions/main/out/vibrateright"));
-			HapticRightJsonObject->SetStringField(TEXT("path"), TEXT("/user/hand/right/output/haptic"));
-
-			TSharedRef<FJsonValueObject> HapticRightJsonValueObject = MakeShareable(new FJsonValueObject(HapticRightJsonObject));
-			HapticValuesArray.Add(HapticRightJsonValueObject);
-
-			// Add Haptic Output Array To Action Set
-			ActionSetJsonObject->SetArrayField(TEXT("haptics"), HapticValuesArray);
-
-			// Create Bindings Stub that includes all Action Sets
-			TSharedRef<FJsonObject> BindingsJsonObject = MakeShareable(new FJsonObject());
-			BindingsJsonObject->SetObjectField(TEXT("/actions/main"), ActionSetJsonObject);
-			BindingsStub->SetObjectField(TEXT("bindings"), BindingsJsonObject);
-			BindingsStub->SetStringField(TEXT("description"), TEXT("UE4 Generated Bindings"));
+			// These two fields are required for SteamVR to accept the bindings file and allow editing it.
+			BindingsStub->SetObjectField(TEXT("bindings"), EmptyJsonObject);
+			BindingsStub->SetStringField(TEXT("description"), TEXT(""));
 
 			// Print the stub bindings to a JSON string and save it to a file
 			FString OutputJsonString;
@@ -1347,7 +1161,7 @@ private:
 	{
 		vr::IVRInput* VRInput;
 
-		if (bEnableVRInput && (VRInput = GetVRInput()) != nullptr)
+		if (bEnableVRInput && (VRInput = vr::VRInput()) != nullptr)
 		{
 			// Input Key Mappings - UE uses Action to Multiple Inputs, this needs to be reorganized to match 
 			// Valve's which is Input to multiple actions
@@ -1541,17 +1355,12 @@ private:
 					InputMappings.Add(NewInputMapping);
 				}
 
-				// Skeletal Data
-				{
-					FString ConstActionPath = FString("/actions/main/in/skeletonleft");
-					Actions.Add(FSteamVRAction(ConstActionPath, FSteamVRAction::EActionType::Skeleton, true,
-						FName(TEXT("Skeleton (Left)")), FString(TEXT("/skeleton/hand/left"))));
-				}
-				{
-					FString ConstActionPath = FString("/actions/main/in/skeletonright");
-					Actions.Add(FSteamVRAction(ConstActionPath, FSteamVRAction::EActionType::Skeleton, true,
-						FName(TEXT("Skeleton (Right)")), FString(TEXT("/skeleton/hand/right"))));
-				}
+				// Add left and right hand skeletal action entries
+				// We store the skeletal action name in the actionX field
+				// Skeletal actions don't require polling anyway
+				Actions.Add(FSteamVRAction(FString("/actions/main/in/righthand_skeleton"), FName(TEXT("Hand Skeleton (Right)")), FName(TEXT("/skeleton/hand/right"))));
+				Actions.Add(FSteamVRAction(FString("/actions/main/in/lefthand_skeleton"), FName(TEXT("Hand Skeleton (Left)")), FName(TEXT("/skeleton/hand/left"))));
+
 
 				// Open console
 				{
@@ -1591,17 +1400,13 @@ private:
 					TSharedRef<FJsonObject> ActionObject = MakeShareable(new FJsonObject());
 					ActionObject->SetStringField(TEXT("name"), Action.Path);
 					ActionObject->SetStringField(TEXT("type"), Action.TypeAsString());
-
-					// Add hand if skeleton
-					if (!Action.Skel.IsEmpty())
+					ActionObject->SetStringField(TEXT("requirement"), TEXT("optional"));
+					
+					// If this is a skeletal action, then we also need to include its skeletal information field
+					if (Action.Type == FSteamVRAction::EActionType::Skeleton)
 					{
-						ActionObject->SetStringField(TEXT("skeleton"), Action.Skel);
-					}
-
-					// Add requirement field for optionals
-					if (!Action.Requirement)
-					{
-						ActionObject->SetStringField(TEXT("requirement"), TEXT("optional"));
+						// We stored the skeletal name in the ActionKey_X field
+						ActionObject->SetStringField(TEXT("skeleton"), Action.ActionKey_X.ToString());
 					}
 
 					ActionsArray.Add(MakeShareable(new FJsonValueObject(ActionObject)));

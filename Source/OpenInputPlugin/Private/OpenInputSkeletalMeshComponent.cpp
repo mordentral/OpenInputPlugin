@@ -18,7 +18,7 @@ UOpenInputSkeletalMeshComponent::UOpenInputSkeletalMeshComponent(const FObjectIn
 	bReplicateSkeletalData = false;
 	bOffsetByControllerProfile = true;
 	SkeletalNetUpdateCount = 0.f;
-
+	HandSkeletalAction.SkeletalData.TargetHand = EVRActionHand::EActionHand_Right;
 	bDetectGestures = true;
 }
 
@@ -51,6 +51,10 @@ void UOpenInputSkeletalMeshComponent::NewControllerProfileLoaded()
 
 void UOpenInputSkeletalMeshComponent::GetCurrentProfileTransform(bool bBindToNoticationDelegate)
 {
+	// Don't run this logic if we aren't parented to a controller
+	if(!GetAttachParent() || !GetAttachParent()->IsA(UMotionControllerComponent::StaticClass()))
+		return;
+
 	// Need to rep this offset to the server and then down to remote clients as well, otherwise it will not perform correctly
 	if (bOffsetByControllerProfile)
 	{
@@ -61,11 +65,11 @@ void UOpenInputSkeletalMeshComponent::GetCurrentProfileTransform(bool bBindToNot
 
 		FTransform NewControllerProfileTransform = FTransform::Identity;
 
-		if (!bIsForRightHand || !VRSettings->bUseSeperateHandTransforms)
+		if (HandSkeletalAction.SkeletalData.TargetHand == EVRActionHand::EActionHand_Left || !VRSettings->bUseSeperateHandTransforms)
 		{
 			NewControllerProfileTransform = VRSettings->CurrentControllerProfileTransform;
 		}
-		else if (bIsForRightHand)
+		else if (HandSkeletalAction.SkeletalData.TargetHand == EVRActionHand::EActionHand_Right)
 		{
 			NewControllerProfileTransform = VRSettings->CurrentControllerProfileTransformRight;
 		}
@@ -90,9 +94,29 @@ void FOpenInputAnimInstanceProxy::PreUpdate(UAnimInstance* InAnimInstance, float
 {
 	Super::PreUpdate(InAnimInstance, DeltaSeconds);
 
-	if (const UOpenInputSkeletalMeshComponent * OwningMesh = Cast<UOpenInputSkeletalMeshComponent>(InAnimInstance->GetOwningComponent()))
+	if (UOpenInputSkeletalMeshBothHands * OwningMesh = Cast<UOpenInputSkeletalMeshBothHands>(InAnimInstance->GetOwningComponent()))
 	{
-		HandSkeletalActionData = OwningMesh->HandSkeletalAction;
+		if (HandSkeletalActionData.Num() < 2)
+		{
+			HandSkeletalActionData.Add(OwningMesh->HandSkeletalAction.SkeletalData);
+			HandSkeletalActionData.Add(OwningMesh->HandSkeletalActionLeft.SkeletalData);
+		}
+		else
+		{
+			HandSkeletalActionData[0] = OwningMesh->HandSkeletalAction.SkeletalData;
+			HandSkeletalActionData[1] = OwningMesh->HandSkeletalActionLeft.SkeletalData;
+		}
+	}
+	else if (UOpenInputSkeletalMeshComponent * OwningMesh = Cast<UOpenInputSkeletalMeshComponent>(InAnimInstance->GetOwningComponent()))
+	{
+		if (HandSkeletalActionData.Num() < 1)
+		{
+			HandSkeletalActionData.Add(OwningMesh->HandSkeletalAction.SkeletalData);
+		}
+		else
+		{
+			HandSkeletalActionData[0] = OwningMesh->HandSkeletalAction.SkeletalData;
+		}
 	}
 }
 
@@ -119,7 +143,7 @@ void UOpenInputSkeletalMeshComponent::OnUnregister()
 void UOpenInputSkeletalMeshComponent::BeginPlay()
 {
 
-	if (UGripMotionControllerComponent * MotionParent = Cast<UGripMotionControllerComponent>(GetAttachParent()))
+	if (UMotionControllerComponent * MotionParent = Cast<UMotionControllerComponent>(GetAttachParent()))
 	{
 		EControllerHand HandType;
 		if (!FXRMotionControllerBase::GetHandEnumForSourceName(MotionParent->MotionSource, HandType))
@@ -128,19 +152,25 @@ void UOpenInputSkeletalMeshComponent::BeginPlay()
 		}
 
 		if (HandType == EControllerHand::Left || HandType == EControllerHand::AnyHand)
-		{
-			bIsForRightHand = false;
-
-			if(HandSkeletalAction.ActionName.IsEmpty())
-				HandSkeletalAction.ActionName = FString("/actions/main/in/skeletonleft");
-		}
+			HandSkeletalAction.SkeletalData.TargetHand = EVRActionHand::EActionHand_Left;
 		else
-		{
-			bIsForRightHand = true;
+			HandSkeletalAction.SkeletalData.TargetHand = EVRActionHand::EActionHand_Right;
 
-			if (HandSkeletalAction.ActionName.IsEmpty())
-				HandSkeletalAction.ActionName = FString("/actions/main/in/skeletonright");
-		}
+	}
+
+	switch (HandSkeletalAction.SkeletalData.TargetHand)
+	{
+	case EVRActionHand::EActionHand_Left:
+	{
+		if (HandSkeletalAction.ActionName.IsEmpty())
+			HandSkeletalAction.ActionName = FString("/actions/main/in/lefthand_skeleton");
+	}break;
+	case EVRActionHand::EActionHand_Right:
+	{
+		if (HandSkeletalAction.ActionName.IsEmpty())
+			HandSkeletalAction.ActionName = FString("/actions/main/in/righthand_skeleton");
+	}break;
+	default:break;
 	}
 
 	Super::BeginPlay();
@@ -207,8 +237,105 @@ void UOpenInputSkeletalMeshComponent::TickComponent(float DeltaTime, enum ELevel
 	if (bDetectGestures && GesturesDB != nullptr && GesturesDB->Gestures.Num() > 0)
 	{
 		if (HandSkeletalAction.bHasValidData)
-			DetectCurrentPose(LastHandGesture);
+			DetectCurrentPose(HandSkeletalAction, LastHandGesture);
 	}
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+}
+
+UOpenInputSkeletalMeshBothHands::UOpenInputSkeletalMeshBothHands(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	HandSkeletalAction.SkeletalData.TargetHand = EVRActionHand::EActionHand_Right;
+	HandSkeletalAction.SkeletalData.bGetTransformsInParentSpace = true;
+	HandSkeletalAction.SkeletalData.bAllowDeformingMesh = false;
+
+	HandSkeletalActionLeft.SkeletalData.TargetHand = EVRActionHand::EActionHand_Left;
+	HandSkeletalActionLeft.SkeletalData.bGetTransformsInParentSpace = true;
+	HandSkeletalActionLeft.SkeletalData.bAllowDeformingMesh = false;
+	HandSkeletalActionLeft.SkeletalData.bMirrorHand = true;
+	HandSkeletalActionLeft.SkeletalData.AdditionTransform = FTransform(FRotator(0.f, 90.f, -90.f), FVector::ZeroVector, FVector(1.f));
+}
+
+void UOpenInputSkeletalMeshBothHands::BeginPlay()
+{
+	if (HandSkeletalAction.ActionName.IsEmpty())
+	{
+		HandSkeletalAction.SkeletalData.TargetHand = EVRActionHand::EActionHand_Right;
+		HandSkeletalAction.ActionName = FString("/actions/main/in/righthand_skeleton");
+	}
+
+	if (HandSkeletalActionLeft.ActionName.IsEmpty())
+	{
+		HandSkeletalActionLeft.SkeletalData.TargetHand = EVRActionHand::EActionHand_Left;
+		HandSkeletalActionLeft.ActionName = FString("/actions/main/in/lefthand_skeleton");
+	}
+
+	Super::Super::BeginPlay();
+}
+
+void UOpenInputSkeletalMeshBothHands::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
+{
+	if (!IsLocallyControlled())
+	{
+		Super::Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+		return;
+	}
+
+	if (!HandSkeletalAction.ActionName.IsEmpty())
+	{
+		bool bGetCompressedTransforms = false;
+		if (bReplicateSkeletalData)
+		{
+			SkeletalNetUpdateCount += DeltaTime;
+			if (SkeletalNetUpdateCount >= (1.0f / ReplicationRateForSkeletalAnimations))
+			{
+				SkeletalNetUpdateCount = 0.0f;
+				bGetCompressedTransforms = true;
+			}
+		}
+
+		UOpenInputFunctionLibrary::GetActionPose(HandSkeletalAction, this, bGetSkeletalTransforms_WithController, bGetCompressedTransforms, GesturesDB != nullptr);
+
+		if (GetNetMode() == NM_Client/* && !IsTornOff()*/)
+		{
+			// Need to htz limit this
+			if (bGetCompressedTransforms && bReplicateSkeletalData && HandSkeletalAction.CompressedTransforms.Num() > 0)
+				Server_SendSkeletalTransforms(HandSkeletalAction);
+		}
+	}
+
+	if (!HandSkeletalActionLeft.ActionName.IsEmpty())
+	{
+		bool bGetCompressedTransforms = false;
+		/*if (bReplicateSkeletalData)
+		{
+			SkeletalNetUpdateCount += DeltaTime;
+			if (SkeletalNetUpdateCount >= (1.0f / ReplicationRateForSkeletalAnimations))
+			{
+				SkeletalNetUpdateCount = 0.0f;
+				bGetCompressedTransforms = true;
+			}
+		}*/
+
+		UOpenInputFunctionLibrary::GetActionPose(HandSkeletalActionLeft, this, bGetSkeletalTransforms_WithController, bGetCompressedTransforms, GesturesDB != nullptr);
+
+	/*	if (GetNetMode() == NM_Client)
+		{
+			// Need to htz limit this
+			if (bGetCompressedTransforms && bReplicateSkeletalData && HandSkeletalAction.CompressedTransforms.Num() > 0)
+				Server_SendSkeletalTransforms(HandSkeletalAction);
+		}*/
+	}
+
+
+	if (bDetectGestures && GesturesDB != nullptr && GesturesDB->Gestures.Num() > 0)
+	{
+		if (HandSkeletalAction.bHasValidData)
+			DetectCurrentPose(HandSkeletalAction, LastHandGesture);
+		if (HandSkeletalActionLeft.bHasValidData)
+			DetectCurrentPose(HandSkeletalActionLeft, LastHandGestureLeft);
+	}
+
+	Super::Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
