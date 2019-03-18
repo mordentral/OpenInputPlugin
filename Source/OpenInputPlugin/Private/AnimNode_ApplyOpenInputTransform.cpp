@@ -185,7 +185,7 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 			}
 			else
 				TempTrans = (StoredActionInfoPtr->SkeletalTransforms[BoneTransIndex]);// *ParentTrans;
-
+			
 			if (StoredActionInfoPtr->bMirrorHand)
 			{
 				FMatrix M = TempTrans.ToMatrixWithScale();

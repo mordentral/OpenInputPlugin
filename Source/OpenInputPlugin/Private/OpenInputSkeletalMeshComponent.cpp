@@ -254,6 +254,7 @@ UOpenInputSkeletalMeshBothHands::UOpenInputSkeletalMeshBothHands(const FObjectIn
 	HandSkeletalActionLeft.SkeletalData.bGetTransformsInParentSpace = true;
 	HandSkeletalActionLeft.SkeletalData.bAllowDeformingMesh = false;
 	HandSkeletalActionLeft.SkeletalData.bMirrorHand = true;
+	HandSkeletalActionLeft.SkeletalData.AdditionTransform = FTransform(FRotator(0.f, 90.f, -90.f), FVector::ZeroVector, FVector(1.f));
 }
 
 void UOpenInputSkeletalMeshBothHands::BeginPlay()
