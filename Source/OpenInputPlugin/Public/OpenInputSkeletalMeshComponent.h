@@ -413,6 +413,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SkeletalData|Actions"/*, Replicated, ReplicatedUsing = OnRep_SkeletalTransforms*/)
 		FBPOpenVRActionInfo HandSkeletalActionLeft;
 
+	FString LastHandGestureLeft;
+
 	virtual FBPOpenVRActionSkeletalData * GetSkeletalData(EVRActionHand TargetHandToGet) override
 	{
 		if (TargetHandToGet == EVRActionHand::EActionHand_Right)

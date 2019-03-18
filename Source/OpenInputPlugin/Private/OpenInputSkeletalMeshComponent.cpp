@@ -334,7 +334,7 @@ void UOpenInputSkeletalMeshBothHands::TickComponent(float DeltaTime, enum ELevel
 		if (HandSkeletalAction.bHasValidData)
 			DetectCurrentPose(HandSkeletalAction, LastHandGesture);
 		if (HandSkeletalActionLeft.bHasValidData)
-			DetectCurrentPose(HandSkeletalActionLeft, LastHandGesture);
+			DetectCurrentPose(HandSkeletalActionLeft, LastHandGestureLeft);
 	}
 
 	Super::Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
