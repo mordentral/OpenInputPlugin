@@ -720,16 +720,6 @@ public:
 
 private:
 
-	/*inline vr::IVRInput* GetVRInput() const
-	{
-		if (SteamVRPlugin == nullptr)
-		{
-			SteamVRPlugin = &FModuleManager::LoadModuleChecked<ISteamVRPlugin>(TEXT("SteamVR"));
-		}
-
-		return SteamVRPlugin->GetVRInput();
-	}*/
-
 	inline vr::IVRSystem* GetVRSystem() const
 	{
 		if (SteamVRPlugin == nullptr)
@@ -790,6 +780,8 @@ private:
 			case vr::TrackedDeviceClass_HMD:
 				// falls through
 			case vr::TrackedDeviceClass_TrackingReference:
+				// falls through
+			case vr::TrackedDeviceClass_DisplayRedirect:
 				break;
 			default:
 				UE_LOG(LogSteamVRInputController, Warning, TEXT("Encountered unsupported device class of %i!"), (int32)DeviceClass);
