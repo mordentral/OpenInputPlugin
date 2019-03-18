@@ -131,6 +131,49 @@ public:
 		TArray<float> PoseFingerSplays;
 };
 
+UENUM(BlueprintType)
+enum class EVRActionHand : uint8
+{
+	EActionHand_Left = 0,
+	EActionHand_Right
+};
+
+
+USTRUCT(BlueprintType, Category = "VRExpansionFunctions|SteamVR|HandSkeleton")
+struct OPENINPUTPLUGIN_API FBPOpenVRActionSkeletalData
+{
+	GENERATED_BODY()
+public:
+
+	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
+		EVRActionHand TargetHand;
+
+	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
+		bool bGetTransformsInParentSpace;
+
+	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
+		bool bAllowDeformingMesh;
+
+	// If true then the hand mesh will be mirrored, generally used for full body rigs to fix the left hands axis
+	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
+		bool bMirrorHand;
+
+	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = Default)
+		TArray<FTransform> SkeletalTransforms;
+
+	// The rotation required to rotate the finger bones back to X+
+	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
+		FTransform AdditionTransform;
+
+	FBPOpenVRActionSkeletalData()
+	{
+		bGetTransformsInParentSpace = false;
+		AdditionTransform = FTransform(FRotator(0.f, 90.f, 90.f), FVector::ZeroVector, FVector(1.f));
+		bAllowDeformingMesh = true;
+		bMirrorHand = false;
+	}
+};
+
 USTRUCT(BlueprintType, Category = "VRExpansionFunctions|SteamVR|HandSkeleton")
 struct OPENINPUTPLUGIN_API FBPOpenVRActionInfo
 {
@@ -139,15 +182,9 @@ public:
 
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 		FString ActionName;
-	
-	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
-		bool bGetTransformsInParentSpace;
-
-	//UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
-		bool bGetTransformsFacingYForward;
 
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
-		bool bAllowDeformingMesh;
+		FBPOpenVRActionSkeletalData SkeletalData;
 
 	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = Default)
 		TArray<int32> BoneParentIndexes;
@@ -157,18 +194,7 @@ public:
 		FBPOpenVRGesturePoseData PoseFingerData;
 
 	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = Default)
-		TArray<FTransform> SkeletalTransforms;
-
-	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = Default)
 		TArray<FTransform> OldSkeletalTransforms;
-
-	// The rotation required to rotate the root bone back to X+
-	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
-		FTransform AdditionTransform;
-
-	// The rotation required to rotate the root bone back to X+
-	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
-		FTransform RootAdditionTransform;
 
 	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = Default)
 		bool bHasValidData;
@@ -192,11 +218,6 @@ public:
 		bHasValidData = false;
 		CompressedSize = 0;
 		BoneCount = 0;
-		bGetTransformsInParentSpace = false;
-		bGetTransformsFacingYForward = false;
-		AdditionTransform = FTransform(FRotator(0.f, 90.f, 90.f),FVector::ZeroVector, FVector(1.f));
-		RootAdditionTransform = FTransform::Identity;
-		bAllowDeformingMesh = true;
 		SkeletalTrackingLevel = EVROpenInputSkeletalTrackingLevel::VRSkeletalTrackingLevel_Max;
 	}
 
@@ -233,6 +254,16 @@ public:
 	~UOpenInputFunctionLibrary();
 public:
 
+	UFUNCTION(BlueprintPure)
+	static FTransform GetOpenVRBoneTransform(EVROpenInputBones BoneToGet, FBPOpenVRActionInfo HandSkeletalAction)
+	{
+		uint8 index = (uint8)BoneToGet;
+		if (HandSkeletalAction.SkeletalData.SkeletalTransforms.Num() - 1 >= index)
+			return HandSkeletalAction.SkeletalData.SkeletalTransforms[index];
+
+		return FTransform::Identity;
+	}
+
 #if STEAMVR_SUPPORTED_PLATFORM
 
 	FORCEINLINE static FVector CONVERT_STEAMVECTOR_TO_FVECTOR(const vr::HmdVector4_t InVector)
@@ -249,11 +280,6 @@ public:
 	{
 		return FQuat(-InQuat.z, InQuat.x, InQuat.y, -InQuat.w);
 	}
-
-	FORCEINLINE static FQuat CONVERT_STEAMQUAT_TO_FQUAT_Y(const vr::HmdQuaternionf_t InQuat)
-	{
-		return FQuat(-InQuat.x, -InQuat.z, InQuat.y, -InQuat.w);
-	}
 	
 	FORCEINLINE static FTransform CONVERT_STEAMTRANS_TO_FTRANS(const vr::VRBoneTransform_t InTrans, float WorldToMeters)
 	{
@@ -262,15 +288,6 @@ public:
 			FVector(-InTrans.position.v[2], InTrans.position.v[0], InTrans.position.v[1]) * WorldToMeters
 		);
 	}
-
-	FORCEINLINE static FTransform CONVERT_STEAMTRANS_TO_FTRANS_Y(const vr::VRBoneTransform_t InTrans, float WorldToMeters)
-	{
-		return FTransform(
-			FQuat(-InTrans.orientation.x, -InTrans.orientation.z, InTrans.orientation.y, -InTrans.orientation.w),
-			FVector(-InTrans.position.v[0], -InTrans.position.v[2], InTrans.position.v[1]) * WorldToMeters
-			);
-	}
-
 
 #endif
 
@@ -348,36 +365,27 @@ public:
 		Action.CompressedSize = Action.CompressedTransforms.Num();
 
 		vr::EVRInputError InputError = vr::EVRInputError::VRInputError_None;
-		vr::EVRSkeletalTransformSpace TransSpace = Action.bGetTransformsInParentSpace ? vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model;
+		vr::EVRSkeletalTransformSpace TransSpace = Action.SkeletalData.bGetTransformsInParentSpace ? vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model;
 		InputError = VRInput->DecompressSkeletalBoneData(Action.CompressedTransforms.GetData(), Action.CompressedSize, TransSpace, BoneTransforms.GetData(), Action.BoneCount);
 
 		if (InputError != vr::EVRInputError::VRInputError_None)
 			return false;
 
-		if (Action.SkeletalTransforms.Num() > 0)
+		if (Action.SkeletalData.SkeletalTransforms.Num() > 0)
 		{
-			Action.OldSkeletalTransforms = Action.SkeletalTransforms;
+			Action.OldSkeletalTransforms = Action.SkeletalData.SkeletalTransforms;
 		}
 
-		if (Action.SkeletalTransforms.Num() != Action.BoneCount)
+		if (Action.SkeletalData.SkeletalTransforms.Num() != Action.BoneCount)
 		{
-			Action.SkeletalTransforms.Reset(Action.BoneCount);
-			Action.SkeletalTransforms.AddUninitialized(Action.BoneCount);
+			Action.SkeletalData.SkeletalTransforms.Reset(Action.BoneCount);
+			Action.SkeletalData.SkeletalTransforms.AddUninitialized(Action.BoneCount);
 		}
 
 		float WorldToMeters = ((WorldToUseForScale != nullptr) ? WorldToMeters = WorldToUseForScale->GetWorldSettings()->WorldToMeters : 100.f);
 
-		// Skipping checking the bool on loop
-		if (Action.bGetTransformsFacingYForward)
-		{
-			for (int i = 0; i < BoneTransforms.Num(); ++i)
-				Action.SkeletalTransforms[i] = CONVERT_STEAMTRANS_TO_FTRANS_Y(BoneTransforms[i], WorldToMeters);
-		}
-		else
-		{
-			for (int i = 0; i < BoneTransforms.Num(); ++i)
-				Action.SkeletalTransforms[i] = CONVERT_STEAMTRANS_TO_FTRANS(BoneTransforms[i], WorldToMeters);
-		}
+		for (int i = 0; i < BoneTransforms.Num(); ++i)
+			Action.SkeletalData.SkeletalTransforms[i] = CONVERT_STEAMTRANS_TO_FTRANS(BoneTransforms[i], WorldToMeters);
 
 
 		return true;
@@ -487,7 +495,7 @@ public:
 		vr::EVRSkeletalMotionRange MotionTypeToGet = bGetControllerSkeleton ? vr::EVRSkeletalMotionRange::VRSkeletalMotionRange_WithController : vr::EVRSkeletalMotionRange::VRSkeletalMotionRange_WithoutController;
 		
 		{
-			InputError = VRInput->GetSkeletalBoneData(Action.ActionHandleContainer.ActionHandle, Action.bGetTransformsInParentSpace ? vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model, MotionTypeToGet, BoneTransforms.GetData(), Action.BoneCount);
+			InputError = VRInput->GetSkeletalBoneData(Action.ActionHandleContainer.ActionHandle, Action.SkeletalData.bGetTransformsInParentSpace ? vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model, MotionTypeToGet, BoneTransforms.GetData(), Action.BoneCount);
 			Action.CompressedSize = 0;
 			Action.CompressedTransforms.Empty(bGetCompressedData ? Action.BoneCount : 0);
 		}
@@ -499,7 +507,7 @@ public:
 			TArray<uint8> TempBuffer;
 			TempBuffer.AddUninitialized(MaxArraySize);
 
-			InputError = VRInput->GetSkeletalBoneDataCompressed(Action.ActionHandleContainer.ActionHandle, /*Action.bGetTransformsInParentSpace ? vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model,*/ MotionTypeToGet, TempBuffer.GetData(), MaxArraySize, &Action.CompressedSize);
+			InputError = VRInput->GetSkeletalBoneDataCompressed(Action.ActionHandleContainer.ActionHandle, MotionTypeToGet, TempBuffer.GetData(), MaxArraySize, &Action.CompressedSize);
 			Action.CompressedTransforms.Reset(Action.CompressedSize);
 			Action.CompressedTransforms.AddUninitialized(Action.CompressedSize);
 			FMemory::Memcpy(Action.CompressedTransforms.GetData(), TempBuffer.GetData(), Action.CompressedSize);
@@ -508,38 +516,23 @@ public:
 		if (InputError != vr::EVRInputError::VRInputError_None)
 			return false;
 
-		if (Action.SkeletalTransforms.Num() > 0)
+		if (Action.SkeletalData.SkeletalTransforms.Num() > 0)
 		{
-			Action.OldSkeletalTransforms = Action.SkeletalTransforms;
+			Action.OldSkeletalTransforms = Action.SkeletalData.SkeletalTransforms;
 		}
 
-		if (Action.SkeletalTransforms.Num() != Action.BoneCount)
+		if (Action.SkeletalData.SkeletalTransforms.Num() != Action.BoneCount)
 		{
-			Action.SkeletalTransforms.Reset(Action.BoneCount);
-			Action.SkeletalTransforms.AddUninitialized(Action.BoneCount);
+			Action.SkeletalData.SkeletalTransforms.Reset(Action.BoneCount);
+			Action.SkeletalData.SkeletalTransforms.AddUninitialized(Action.BoneCount);
 		}
 
-		/*struct HmdQuaternionf_t
-		{
-		float w, x, y, z;
-		};
-		OutOrientation.X = -Orientation.Z;
-		OutOrientation.Y = Orientation.X;
-		OutOrientation.Z = Orientation.Y;
-		OutOrientation.W = -Orientation.W;*/
 		UWorld* World = (WorldContextObject) ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull) : nullptr;
 		float WorldToMeters = ((World != nullptr) ? WorldToMeters = World->GetWorldSettings()->WorldToMeters : 100.f);
 
-		// Skipping checking the bool on loop
-		if (Action.bGetTransformsFacingYForward)
+		for (int i = 0; i < BoneTransforms.Num(); ++i)
 		{
-			for (int i = 0; i < BoneTransforms.Num(); ++i)
-				Action.SkeletalTransforms[i] = CONVERT_STEAMTRANS_TO_FTRANS_Y(BoneTransforms[i], WorldToMeters);
-		}
-		else
-		{
-			for (int i = 0; i < BoneTransforms.Num(); ++i)
-				Action.SkeletalTransforms[i] = CONVERT_STEAMTRANS_TO_FTRANS(BoneTransforms[i], WorldToMeters);
+			Action.SkeletalData.SkeletalTransforms[i] = CONVERT_STEAMTRANS_TO_FTRANS(BoneTransforms[i], WorldToMeters);
 		}
 
 		Action.bHasValidData = true;
@@ -560,7 +553,7 @@ public:
 		vr::IVRInput * VRInput = (vr::IVRInput*)vr::VR_GetGenericInterface(vr::IVRInput_Version, &Initerror);
 
 		BlankActionToFill.bHasValidData = false;
-		BlankActionToFill.bGetTransformsInParentSpace = bGetTransformsInParentSpace;
+		BlankActionToFill.SkeletalData.bGetTransformsInParentSpace = bGetTransformsInParentSpace;
 		BlankActionToFill.ActionHandleContainer = ActionHandleToQuery;
 
 		if (!VRInput)
@@ -596,7 +589,7 @@ public:
 		{
 			InputError = VRInput->GetSkeletalReferenceTransforms(
 				BlankActionToFill.ActionHandleContainer.ActionHandle, 
-				BlankActionToFill.bGetTransformsInParentSpace ? vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model, 
+				BlankActionToFill.SkeletalData.bGetTransformsInParentSpace ? vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model, 
 				(vr::EVRSkeletalReferencePose)PoseTypeToRetreive,
 				BoneTransforms.GetData(), 
 				BlankActionToFill.BoneCount);
@@ -608,39 +601,22 @@ public:
 		if (InputError != vr::EVRInputError::VRInputError_None)
 			return false;
 
-		if (BlankActionToFill.SkeletalTransforms.Num() > 0)
+		if (BlankActionToFill.SkeletalData.SkeletalTransforms.Num() > 0)
 		{
-			BlankActionToFill.OldSkeletalTransforms = BlankActionToFill.SkeletalTransforms;
+			BlankActionToFill.OldSkeletalTransforms = BlankActionToFill.SkeletalData.SkeletalTransforms;
 		}
 
-		if (BlankActionToFill.SkeletalTransforms.Num() != BlankActionToFill.BoneCount)
+		if (BlankActionToFill.SkeletalData.SkeletalTransforms.Num() != BlankActionToFill.BoneCount)
 		{
-			BlankActionToFill.SkeletalTransforms.Reset(BlankActionToFill.BoneCount);
-			BlankActionToFill.SkeletalTransforms.AddUninitialized(BlankActionToFill.BoneCount);
+			BlankActionToFill.SkeletalData.SkeletalTransforms.Reset(BlankActionToFill.BoneCount);
+			BlankActionToFill.SkeletalData.SkeletalTransforms.AddUninitialized(BlankActionToFill.BoneCount);
 		}
 
-		/*struct HmdQuaternionf_t
-		{
-		float w, x, y, z;
-		};
-		OutOrientation.X = -Orientation.Z;
-		OutOrientation.Y = Orientation.X;
-		OutOrientation.Z = Orientation.Y;
-		OutOrientation.W = -Orientation.W;*/
 		UWorld* World = (WorldContextObject) ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull) : nullptr;
 		float WorldToMeters = ((World != nullptr) ? WorldToMeters = World->GetWorldSettings()->WorldToMeters : 100.f);
 
-		// Skipping checking the bool on loop
-		if (BlankActionToFill.bGetTransformsFacingYForward)
-		{
-			for (int i = 0; i < BoneTransforms.Num(); ++i)
-				BlankActionToFill.SkeletalTransforms[i] = CONVERT_STEAMTRANS_TO_FTRANS_Y(BoneTransforms[i], WorldToMeters);
-		}
-		else
-		{
-			for (int i = 0; i < BoneTransforms.Num(); ++i)
-				BlankActionToFill.SkeletalTransforms[i] = CONVERT_STEAMTRANS_TO_FTRANS(BoneTransforms[i], WorldToMeters);
-		}
+		for (int i = 0; i < BoneTransforms.Num(); ++i)
+			BlankActionToFill.SkeletalData.SkeletalTransforms[i] = CONVERT_STEAMTRANS_TO_FTRANS(BoneTransforms[i], WorldToMeters);
 
 		BlankActionToFill.bHasValidData = true;
 		return true;

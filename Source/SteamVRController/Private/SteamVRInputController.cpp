@@ -113,7 +113,6 @@ struct FSteamVRAction
 	EActionType	Type;
 	bool		Requirement;
 	FName		Name;
-	FString		Skel;
 	FName		ActionKey_X;
 	FName		ActionKey_Y;
 	FName		ActionKey_Z;
@@ -146,7 +145,6 @@ struct FSteamVRAction
 		, Type(Boolean)
 		, Requirement(false)
 		, Name(inName)
-		, Skel()
 		, ActionKey_X(inActionKey)
 		, ActionKey_Y()
 		, ActionKey_Z()
@@ -162,7 +160,6 @@ struct FSteamVRAction
 		, Type(Vector1)
 		, Requirement(false)
 		, Name(inName)
-		, Skel()
 		, ActionKey_X(inActionKey)
 		, ActionKey_Y()
 		, ActionKey_Z()
@@ -176,7 +173,6 @@ struct FSteamVRAction
 		, Type(Vector2)
 		, Requirement(false)
 		, Name(inName)
-		, Skel()
 		, ActionKey_X(inActionKey_X)
 		, ActionKey_Y(inActionKey_Y)
 		, ActionKey_Z()
@@ -190,7 +186,6 @@ struct FSteamVRAction
 		, Type(Vector2)
 		, Requirement(false)
 		, Name(inName)
-		, Skel()
 		, ActionKey_X(inActionKey_X)
 		, ActionKey_Y(inActionKey_Y)
 		, ActionKey_Z(inActionKey_Z)
@@ -204,7 +199,6 @@ struct FSteamVRAction
 		, Type(inActionType)
 		, Requirement(inRequirement)
 		, Name(inName)
-		, Skel()
 		, ActionKey_X()
 		, ActionKey_Y()
 		, ActionKey_Z()
@@ -213,13 +207,12 @@ struct FSteamVRAction
 		, LastError(vr::VRInputError_None)
 	{}
 
-	FSteamVRAction(const FString& inPath, const EActionType& inActionType, const bool& inRequirement, const FName& inName, const FString& inSkeleton)
+	// Skeletal action constructor
+	FSteamVRAction(const FString& inPath, const FName& inName, const FName& inActionKey)
 		: Path(inPath)
-		, Type(inActionType)
-		, Requirement(inRequirement)
+		, Type(Skeleton)
 		, Name(inName)
-		, Skel(inSkeleton)
-		, ActionKey_X()
+		, ActionKey_X(inActionKey)
 		, ActionKey_Y()
 		, ActionKey_Z()
 		, Value()
@@ -1370,17 +1363,12 @@ private:
 					InputMappings.Add(NewInputMapping);
 				}
 
-				// Skeletal Data
-				{
-					FString ConstActionPath = FString("/actions/main/in/skeletonleft");
-					Actions.Add(FSteamVRAction(ConstActionPath, FSteamVRAction::EActionType::Skeleton, true,
-						FName(TEXT("Skeleton (Left)")), FString(TEXT("/skeleton/hand/left"))));
-				}
-				{
-					FString ConstActionPath = FString("/actions/main/in/skeletonright");
-					Actions.Add(FSteamVRAction(ConstActionPath, FSteamVRAction::EActionType::Skeleton, true,
-						FName(TEXT("Skeleton (Right)")), FString(TEXT("/skeleton/hand/right"))));
-				}
+				// Add left and right hand skeletal action entries
+				// We store the skeletal action name in the actionX field
+				// Skeletal actions don't require polling anyway
+				Actions.Add(FSteamVRAction(FString("/actions/main/in/righthand_skeleton"), FName(TEXT("Hand Skeleton (Right)")), FName(TEXT("/skeleton/hand/right"))));
+				Actions.Add(FSteamVRAction(FString("/actions/main/in/lefthand_skeleton"), FName(TEXT("Hand Skeleton (Left)")), FName(TEXT("/skeleton/hand/left"))));
+
 
 				// Open console
 				{
@@ -1420,17 +1408,13 @@ private:
 					TSharedRef<FJsonObject> ActionObject = MakeShareable(new FJsonObject());
 					ActionObject->SetStringField(TEXT("name"), Action.Path);
 					ActionObject->SetStringField(TEXT("type"), Action.TypeAsString());
-
-					// Add hand if skeleton
-					if (!Action.Skel.IsEmpty())
+					ActionObject->SetStringField(TEXT("requirement"), TEXT("optional"));
+					
+					// If this is a skeletal action, then we also need to include its skeletal information field
+					if (Action.Type == FSteamVRAction::EActionType::Skeleton)
 					{
-						ActionObject->SetStringField(TEXT("skeleton"), Action.Skel);
-					}
-
-					// Add requirement field for optionals
-					if (!Action.Requirement)
-					{
-						ActionObject->SetStringField(TEXT("requirement"), TEXT("optional"));
+						// We stored the skeletal name in the ActionKey_X field
+						ActionObject->SetStringField(TEXT("skeleton"), Action.ActionKey_X.ToString());
 					}
 
 					ActionsArray.Add(MakeShareable(new FJsonValueObject(ActionObject)));
