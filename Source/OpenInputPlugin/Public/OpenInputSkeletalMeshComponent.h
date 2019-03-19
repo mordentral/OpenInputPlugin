@@ -97,6 +97,7 @@ public:
 	}
 	FOpenInputGestureFingerPosition()
 	{
+		IndexType = EVROpenInputFingerIndexType::VRFinger_Index;
 		Value = 0.f;
 		Threshold = 0.1f;
 	}
@@ -351,6 +352,8 @@ public:
 		const AActor* MyOwner = GetOwner();
 		const APawn* MyPawn = Cast<APawn>(MyOwner);
 		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner && MyOwner->Role == ENetRole::ROLE_Authority);
+
+		// HasLocalNetOwner
 	}
 
 	// Using tick and not timers because skeletal components tick anyway, kind of a waste to make another tick by adding a timer over that
@@ -375,21 +378,6 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SkeletalData|Actions"/*, Replicated, ReplicatedUsing = OnRep_SkeletalTransforms*/)
 		TArray<FBPOpenVRActionInfo> HandSkeletalActions;
-
-	virtual void PostInitProperties() override
-	{
-		Super::PostInitProperties();
-
-#if WITH_EDITOR
-		// If there was no skeletal action defined by the user, add a default one
-		if (!HandSkeletalActions.Num())
-		{
-			HandSkeletalActions.Add(FBPOpenVRActionInfo());
-			HandSkeletalActions[0].SkeletalData.TargetHand = EVRActionHand::EActionHand_Right;
-		}
-#endif
-
-	}
 
 	// This one specifically sends out the new relative location for a retain secondary grip
 	UFUNCTION(Unreliable, Server, WithValidation)
@@ -416,40 +404,6 @@ public:
 	// Used in Tick() to accumulate before sending updates, didn't want to use a timer in this case, also used for remotes to lerp position
 	float SkeletalUpdateCount;
 };	
-
-UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent))
-class OPENINPUTPLUGIN_API UOpenInputSkeletalMeshBothHands : public UOpenInputSkeletalMeshComponent
-{
-	GENERATED_BODY()
-
-public:
-	UOpenInputSkeletalMeshBothHands(const FObjectInitializer& ObjectInitializer);
-
-	virtual void PostInitProperties() override
-	{
-		Super::Super::PostInitProperties();
-
-#if WITH_EDITOR
-		// If there was no skeletal action defined by the user, add a default one
-		if (!HandSkeletalActions.Num())
-		{
-			HandSkeletalActions.Add(FBPOpenVRActionInfo());
-			HandSkeletalActions[0].SkeletalData.TargetHand = EVRActionHand::EActionHand_Right;
-			HandSkeletalActions[0].SkeletalData.bGetTransformsInParentSpace = true;
-			HandSkeletalActions[0].SkeletalData.bAllowDeformingMesh = false;
-			HandSkeletalActions[0].ActionName = FString("/actions/main/in/righthand_skeleton");
-
-			HandSkeletalActions.Add(FBPOpenVRActionInfo());
-			HandSkeletalActions[1].SkeletalData.TargetHand = EVRActionHand::EActionHand_Left;
-			HandSkeletalActions[1].SkeletalData.bGetTransformsInParentSpace = true;
-			HandSkeletalActions[1].SkeletalData.bAllowDeformingMesh = false;
-			HandSkeletalActions[1].SkeletalData.bMirrorHand = true;
-			HandSkeletalActions[1].ActionName = FString("/actions/main/in/lefthand_skeleton");
-		}
-#endif
-
-	}
-};
 
 USTRUCT()
 struct OPENINPUTPLUGIN_API FOpenInputAnimInstanceProxy : public FAnimInstanceProxy

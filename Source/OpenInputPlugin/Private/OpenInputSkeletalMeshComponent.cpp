@@ -238,7 +238,3 @@ void UOpenInputSkeletalMeshComponent::TickComponent(float DeltaTime, enum ELevel
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
 
-UOpenInputSkeletalMeshBothHands::UOpenInputSkeletalMeshBothHands(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
-{
-}

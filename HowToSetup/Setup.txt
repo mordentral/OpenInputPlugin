@@ -6,7 +6,7 @@ vr.SteamVR.EnableSteamVRInputController=1
 
 This turns off beta input and enables the custom beta input of the new SteamVRInputController
 
-The skeletal action names will also need to be modified as such:
+The skeletal action names used are below (auto set if the skeletal action is blank):
 /actions/main/in/righthand_skeleton
 /actions/main/in/lefthand_skeleton
 
@@ -26,6 +26,7 @@ they likely won't be rigged correctly for it).
 
 Load in and go to your pawn, under each motion controller add an OpenInputSkeletalMeshComponent
 
+Add at least 1 skeletal action to the skeletal action array and set its hand type (Left or Right)
 If you have a custom action manifest generation then add the action names in, if you do not then they will be auto filled with my defaults.
 
 Leave the rest of the settings default for now.
@@ -33,6 +34,7 @@ Leave the rest of the settings default for now.
 
 2.
 
+Set the mesh and animation blueprint for the mesh
 Open up the animation blueprint for your hand meshes
 Click on "ClassSettings" on the menu bar
 Re-parent the class to the OpenInputAnimInstance class
@@ -47,7 +49,6 @@ Change the drop down selection to which hand right/left it is (I may automate th
 You can also manually map a new skeleton but that is outside of this txt files scope.
 
 
-
 Play, you should be good now. This is stil very beta since I have to hack it all to work until Epic fixes stuff, but everything works.
 You can make and record gestures, get events when they are thrown, see your hands animate with a controller or without, ect.
 
@@ -56,12 +57,11 @@ Feel free to ask me questions in PM or discord, and replication, while enabled, 
 
 4. Full body setup
 
-If you are doing a full body setup you will need to use the OpenInputSkeletalMeshBothHands component instead (for now it is a seperate subclass, I may merge them at some point).
-Also you will need two Apply_OpenInputTransform nodes in the animation graph, one for the left and one for the right hands.
+If you are doing a full body setup you will need two skeletal actions and two Apply_OpenInputTransform nodes in the animation graph, one for the left and one for the right hands.
 You will also likely want to tick on bSkipRootBone on these nodes so that the wrist isn't moved (unless you have a proxy bone where the wrist is to allow controller offsets).
 
 Also for the left hand you will likely need to tick the "MirrorSkeletal" boolean on the action struct as the OpenInput skeletal data is not setup for inverse directions.
-This is already done by default for you with the OpenInputSkeletalMeshBothHands component.
+You also will want GetTransformsInParentSpace true and AllowDeformingMesh false (if the hand mesh isn't weighted and rigged correctly).
 
 The full body reference images folder has some screen shot references for this.
 

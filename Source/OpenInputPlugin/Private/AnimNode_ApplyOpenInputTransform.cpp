@@ -220,7 +220,7 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 		TransBones.Add(FBoneTransform(BonePair.ReferenceToConstruct.CachedCompactPoseIndex, trans));
 
 		// Need to do it per bone so future bones are correct
-		if (!StoredActionInfoPtr->bAllowDeformingMesh || StoredActionInfoPtr->bGetTransformsInParentSpace)
+		if ((!StoredActionInfoPtr->bAllowDeformingMesh || StoredActionInfoPtr->bGetTransformsInParentSpace) && TransBones.Num())
 		{
 			Output.Pose.LocalBlendCSBoneTransforms(TransBones, BlendWeight);
 			TransBones.Reset();
@@ -228,7 +228,7 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 	}
 
 	// Fine doing it at the end, all bones are self authoritative, this is a perf savings
-	if (StoredActionInfoPtr->bAllowDeformingMesh && !StoredActionInfoPtr->bGetTransformsInParentSpace)
+	if (StoredActionInfoPtr->bAllowDeformingMesh && !StoredActionInfoPtr->bGetTransformsInParentSpace && TransBones.Num())
 	{
 		Output.Pose.LocalBlendCSBoneTransforms(TransBones, BlendWeight);
 		TransBones.Reset();

@@ -223,6 +223,7 @@ public:
 		CompressedSize = 0;
 		BoneCount = 0;
 		SkeletalTrackingLevel = EVROpenInputSkeletalTrackingLevel::VRSkeletalTrackingLevel_Max;
+		bGetSkeletalTransforms_WithController = false;
 	}
 
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
