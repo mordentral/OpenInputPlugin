@@ -1,4 +1,21 @@
-Alter your DefaultEngine.ini file to include this:
+
+PRE-SETUP
+
+___________________________________________________________________________________________________________________________________________________________________
+
+If you are running the module WITHOUT VRExpansionPlugin then open up OpenInputPlugin.build.cs and change the line
+
+bool bCompileWithVRExpansion = true;
+
+to
+
+bool bCompileWithVRExpansion = false;
+
+This will cause it to no longer compile against my primary plugin and to act standalone.
+
+
+
+Then alter your DefaultEngine.ini file to include this:
 
 [SystemSettings]
 vr.SteamVR.EnableVRInput=0
@@ -6,7 +23,7 @@ vr.SteamVR.EnableSteamVRInputController=1
 
 This turns off beta input and enables the custom beta input of the new SteamVRInputController
 
-The skeletal action names used are below (auto set if the skeletal action is blank):
+The skeletal action names used are below (auto set if the skeletal action name is blank):
 /actions/main/in/righthand_skeleton
 /actions/main/in/lefthand_skeleton
 
@@ -14,8 +31,11 @@ I am setting the plugin to default to these for now when none have been provided
 
 ___________________________________________________________________________________________________________________________________________________________________
 
+MAIN SETUP
+___________________________________________________________________________________________________________________________________________________________________
 
-You may want to get the knuckles controller profile from the latest template.
+
+You may want to get the knuckles controller profile from the latest template (if using the VRExpansionPlugin).
 
 Also I am also packaging the OpenInput testing hands as they are pre-rigged and fully setup already and they look 100x better than
 pretty much all stock hands for ue4. (when using ue4 hands you likely will want to turn off bone morphing in the settings as 
@@ -26,11 +46,10 @@ they likely won't be rigged correctly for it).
 
 Load in and go to your pawn, under each motion controller add an OpenInputSkeletalMeshComponent
 
-Add at least 1 skeletal action to the skeletal action array and set its hand type (Left or Right)
+Add at least 1 skeletal action to the skeletal action array and set its hand type (Left or Right under SkeletalData)
 If you have a custom action manifest generation then add the action names in, if you do not then they will be auto filled with my defaults.
 
 Leave the rest of the settings default for now.
-
 
 2.
 
@@ -49,10 +68,10 @@ Change the drop down selection to which hand right/left it is (I may automate th
 You can also manually map a new skeleton but that is outside of this txt files scope.
 
 
-Play, you should be good now. This is stil very beta since I have to hack it all to work until Epic fixes stuff, but everything works.
+Play, you should be good now. This is stil very beta, but everything works.
 You can make and record gestures, get events when they are thrown, see your hands animate with a controller or without, ect.
 
-Feel free to ask me questions in PM or discord, and replication, while enabled, is not final, so be careful with it.
+Feel free to ask me questions in PM or discord, and replication, while enabled, is not final, so be careful with it (currently not enabled again due to refactoring).
 
 
 4. Full body setup
