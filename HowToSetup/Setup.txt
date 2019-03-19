@@ -1,11 +1,4 @@
-*NOTE* As of the latest release I am packaging a modified version of what RuneBerg / Valve are using for their plugins in.
-Epic has been very slow in actually releasing full support for this so I figured it was time to just go ahead and bypass them
-like the others are doing.
-
-If you want to "package" for this (without engine edits) you can switch over to using that method instead, just be warned that it requires turning OFF the beta input
-on the main engine version and turning it on for the custom controller class.
-
-To do so, alter your DefaultEngine.ini file to include this:
+Alter your DefaultEngine.ini file to include this:
 
 [SystemSettings]
 vr.SteamVR.EnableVRInput=0
@@ -18,10 +11,6 @@ The skeletal action names will also need to be modified as such:
 /actions/main/in/lefthand_skeleton
 
 I am setting the plugin to default to these for now when none have been provided
-
-
-Then just skip to Step3 below, you can either use the new action names or skip step three 
-entirely and let the plugin write it out itself.
 
 ___________________________________________________________________________________________________________________________________________________________________
 
@@ -72,7 +61,7 @@ Also you will need two Apply_OpenInputTransform nodes in the animation graph, on
 You will also likely want to tick on bSkipRootBone on these nodes so that the wrist isn't moved (unless you have a proxy bone where the wrist is to allow controller offsets).
 
 Also for the left hand you will likely need to tick the "MirrorSkeletal" boolean on the action struct as the OpenInput skeletal data is not setup for inverse directions.
-This is already done by default for you with the OpenInputSkeletalMeshBothHands component as well as an AdditionTransform change to account for the mirror roll.
+This is already done by default for you with the OpenInputSkeletalMeshBothHands component.
 
 The full body reference images folder has some screen shot references for this.
 
