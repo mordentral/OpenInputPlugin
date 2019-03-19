@@ -189,7 +189,7 @@ public:
 		FString ActionName;
 
 	// This is where you set the hand type / settings for the skeletal data
-	UPROPERTY(EditAnywhere, NotReplicated, Transient, BlueprintReadWrite, Category = Default, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default, meta = (AllowPrivateAccess = "true"))
 		FBPOpenVRActionSkeletalData SkeletalData;
 
 	UPROPERTY(BlueprintReadOnly, NotReplicated, Transient, Category = Default)
@@ -398,25 +398,24 @@ public:
 
 			// Not filling in the field as that is a waste, just assuming from the data sent in
 			// Still allowing overriding manually though
-			FString ActionNameToTarget = Action.ActionName;
 
-			if (ActionNameToTarget.IsEmpty())
+			if (Action.ActionName.IsEmpty())
 			{
 				switch (Action.SkeletalData.TargetHand)
 				{
 				case EVRActionHand::EActionHand_Left:
 				{
-					ActionNameToTarget = FString("/actions/main/in/lefthand_skeleton");
+					Action.ActionName = FString("/actions/main/in/lefthand_skeleton");
 				}break;
 				case EVRActionHand::EActionHand_Right:
 				{
-					ActionNameToTarget = FString("/actions/main/in/righthand_skeleton");
+					Action.ActionName = FString("/actions/main/in/righthand_skeleton");
 				}break;
 				default:break;
 				}
 			}
 
-			InputError = VRInput->GetActionHandle(TCHAR_TO_UTF8(*ActionNameToTarget), &Action.ActionHandleContainer.ActionHandle);
+			InputError = VRInput->GetActionHandle(TCHAR_TO_UTF8(*Action.ActionName), &Action.ActionHandleContainer.ActionHandle);
 			if (InputError != vr::EVRInputError::VRInputError_None)
 			{
 				Action.ActionHandleContainer.ActionHandle = vr::k_ulInvalidActionHandle;
