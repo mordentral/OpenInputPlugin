@@ -444,7 +444,6 @@ public:
 			HandSkeletalActions[1].SkeletalData.bGetTransformsInParentSpace = true;
 			HandSkeletalActions[1].SkeletalData.bAllowDeformingMesh = false;
 			HandSkeletalActions[1].SkeletalData.bMirrorHand = true;
-			HandSkeletalActions[1].SkeletalData.AdditionTransform = FTransform(FRotator(0.f, 90.f, -90.f), FVector::ZeroVector, FVector(1.f));
 			HandSkeletalActions[1].ActionName = FString("/actions/main/in/lefthand_skeleton");
 		}
 #endif

@@ -116,6 +116,12 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 	OutBoneTransforms.Reserve(MappedBonePairs.BonePairs.Num());
 	TArray<FBoneTransform> TransBones;
 	FTransform AdditionTransform = StoredActionInfoPtr->AdditionTransform;
+	if (StoredActionInfoPtr->bMirrorHand)
+	{
+		AdditionTransform.Mirror(EAxis::X, EAxis::Y);
+	}
+
+
 	FTransform TempTrans = FTransform::Identity;
 
 	TMap<int32, FTransform> ParentTransformArray;
@@ -204,8 +210,9 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 			if (StoredActionInfoPtr->bGetTransformsInParentSpace)
 				ParentTransformArray.Add(BonePair.ReferenceToConstruct.CachedCompactPoseIndex.GetInt(), trans);
 
+
 			if (StoredActionInfoPtr->bAllowDeformingMesh)
-				trans = AdditionTransform * trans;
+				trans = (AdditionTransform) * trans;
 			else
 				trans.ConcatenateRotation(AdditionTransform.GetRotation());
 		}

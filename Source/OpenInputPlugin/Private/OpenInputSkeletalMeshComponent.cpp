@@ -91,7 +91,7 @@ void FOpenInputAnimInstanceProxy::PreUpdate(UAnimInstance* InAnimInstance, float
 {
 	Super::PreUpdate(InAnimInstance, DeltaSeconds);
 
-	if (UOpenInputSkeletalMeshBothHands * OwningMesh = Cast<UOpenInputSkeletalMeshBothHands>(InAnimInstance->GetOwningComponent()))
+	if (UOpenInputSkeletalMeshComponent * OwningMesh = Cast<UOpenInputSkeletalMeshComponent>(InAnimInstance->GetOwningComponent()))
 	{
 		if (HandSkeletalActionData.Num() != OwningMesh->HandSkeletalActions.Num())
 		{
@@ -134,7 +134,6 @@ void UOpenInputSkeletalMeshComponent::OnUnregister()
 
 void UOpenInputSkeletalMeshComponent::BeginPlay()
 {
-
 	if (UMotionControllerComponent * MotionParent = Cast<UMotionControllerComponent>(GetAttachParent()))
 	{
 		EControllerHand HandType;
