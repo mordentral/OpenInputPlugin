@@ -195,8 +195,25 @@ public:
 		UOpenInputGestureDatabase *GesturesDB;
 
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
-	void SaveCurrentPose(FString RecordingName, bool bUseFingerCurlOnly = true)
+	void SaveCurrentPose(FString RecordingName, bool bUseFingerCurlOnly = true, EVRActionHand HandToSave = EVRActionHand::EActionHand_Right)
 	{
+
+		if (!HandSkeletalActions.Num())
+			return;
+
+		// Default to the first hand element so that single length arrays work as is.
+		FBPOpenVRActionInfo & HandSkeletalAction = HandSkeletalActions[0];
+
+		// Now check for the specific passed in hand if this is a multi hand
+		for (int i = 0; i <HandSkeletalActions.Num(); ++i)
+		{
+			if (HandSkeletalActions[i].SkeletalData.TargetHand == HandToSave)
+			{
+				HandSkeletalAction = HandSkeletalActions[i];
+				break;
+			}
+		}
+
 		if (GesturesDB)
 		{
 			FOpenInputGesture NewGesture(bUseFingerCurlOnly);
@@ -217,8 +234,8 @@ public:
 		}
 	}
 
-	UFUNCTION(BlueprintCallable, Category = "VRGestures")
-	bool DetectCurrentPose(FBPOpenVRActionInfo &SkeletalAction, FOpenInputGesture &GestureOut)
+	UFUNCTION(BlueprintCallable, Category = "VRGestures", meta = (DisplayName = "DetectCurrentPose"))
+	bool K2_DetectCurrentPose(FBPOpenVRActionInfo &SkeletalAction, FOpenInputGesture & GestureOut)
 	{
 		if (!GesturesDB || GesturesDB->Gestures.Num() < 1)
 			return false;
@@ -246,7 +263,7 @@ public:
 			{
 				for (int i = 0; i < SkeletalAction.PoseFingerData.PoseFingerSplays.Num() && (i + vr::VRFinger_Count) < Gesture.FingerValues.Num(); ++i)
 				{
-					if (!FMath::IsNearlyEqual(HandSkeletalAction.PoseFingerData.PoseFingerCurls[i], Gesture.FingerValues[i + vr::VRFinger_Count].Value, Gesture.FingerValues[i + vr::VRFinger_Count].Threshold))
+					if (!FMath::IsNearlyEqual(SkeletalAction.PoseFingerData.PoseFingerCurls[i], Gesture.FingerValues[i + vr::VRFinger_Count].Value, Gesture.FingerValues[i + vr::VRFinger_Count].Threshold))
 					{
 						bDetectedPose = false;
 						break;
@@ -265,7 +282,7 @@ public:
 	}
 
 	// This version throws events
-	bool DetectCurrentPose(FBPOpenVRActionInfo &SkeletalAction, FString &LastGesture)
+	bool DetectCurrentPose(FBPOpenVRActionInfo &SkeletalAction)
 	{
 		if (!GesturesDB || GesturesDB->Gestures.Num() < 1)
 			return false;
@@ -306,12 +323,12 @@ public:
 
 			if (bDetectedPose)
 			{
-				if (LastGesture != Gesture.Name)
+				if (SkeletalAction.LastHandGesture != Gesture.Name)
 				{
-					if(!LastGesture.IsEmpty())
-						OnGestureEnded.Broadcast(LastGesture, SkeletalAction.SkeletalData.TargetHand);
+					if(!SkeletalAction.LastHandGesture.IsEmpty())
+						OnGestureEnded.Broadcast(SkeletalAction.LastHandGesture, SkeletalAction.SkeletalData.TargetHand);
 					OnNewGestureDetected.Broadcast(Gesture, SkeletalAction.SkeletalData.TargetHand);
-					LastGesture = Gesture.Name;
+					SkeletalAction.LastHandGesture = Gesture.Name;
 					return true;
 				}
 				else
@@ -319,10 +336,10 @@ public:
 			}
 		}
 
-		if (!LastGesture.IsEmpty())
+		if (!SkeletalAction.LastHandGesture.IsEmpty())
 		{
-			OnGestureEnded.Broadcast(LastGesture, SkeletalAction.SkeletalData.TargetHand);
-			LastGesture.Empty();
+			OnGestureEnded.Broadcast(SkeletalAction.LastHandGesture, SkeletalAction.SkeletalData.TargetHand);
+			SkeletalAction.LastHandGesture.Empty();
 		}
 		return false;
 	}
@@ -356,16 +373,23 @@ public:
 	virtual void Activate(bool bReset = false) override;
 	virtual void Deactivate() override;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SkeletalData|Actions"/*, Replicated, ReplicatedUsing = OnRep_SkeletalTransforms*/)
+		TArray<FBPOpenVRActionInfo> HandSkeletalActions;
 
-	UFUNCTION()
-		void OnUpdateSkeletalData();
+	virtual void PostInitProperties() override
+	{
+		Super::PostInitProperties();
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = SkeletalData)
-		bool bGetSkeletalTransforms_WithController;
+#if WITH_EDITOR
+		// If there was no skeletal action defined by the user, add a default one
+		if (!HandSkeletalActions.Num())
+		{
+			HandSkeletalActions.Add(FBPOpenVRActionInfo());
+			HandSkeletalActions[0].SkeletalData.TargetHand = EVRActionHand::EActionHand_Right;
+		}
+#endif
 
-	// Primary hand skeletal action
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SkeletalData|Actions", Replicated, ReplicatedUsing = OnRep_SkeletalTransforms)
-		FBPOpenVRActionInfo HandSkeletalAction;
+	}
 
 	// This one specifically sends out the new relative location for a retain secondary grip
 	UFUNCTION(Unreliable, Server, WithValidation)
@@ -375,13 +399,11 @@ public:
 		virtual void OnRep_SkeletalTransforms()
 	{
 		
-		UOpenInputFunctionLibrary::DecompressSkeletalData(HandSkeletalAction, GetWorld());
+		//UOpenInputFunctionLibrary::DecompressSkeletalData(HandSkeletalAction, GetWorld());
 
 		// Convert to skeletal data from compressed here
 		//ReplicatedControllerTransform.Unpack();
 	}
-
-	FString LastHandGesture;
 
 	UPROPERTY(EditAnywhere, Category = SkeletalData)
 		bool bReplicateSkeletalData;
@@ -393,11 +415,6 @@ public:
 	float SkeletalNetUpdateCount;
 	// Used in Tick() to accumulate before sending updates, didn't want to use a timer in this case, also used for remotes to lerp position
 	float SkeletalUpdateCount;
-
-	virtual FBPOpenVRActionSkeletalData * GetSkeletalData(EVRActionHand TargetHandToGet)
-	{
-		return &HandSkeletalAction.SkeletalData;
-	}
 };	
 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent))
@@ -408,28 +425,30 @@ class OPENINPUTPLUGIN_API UOpenInputSkeletalMeshBothHands : public UOpenInputSke
 public:
 	UOpenInputSkeletalMeshBothHands(const FObjectInitializer& ObjectInitializer);
 
-	// Secondary hand skeletal action
-	// #TODO: Replicate this too
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SkeletalData|Actions"/*, Replicated, ReplicatedUsing = OnRep_SkeletalTransforms*/)
-		FBPOpenVRActionInfo HandSkeletalActionLeft;
-
-	FString LastHandGestureLeft;
-
-	virtual FBPOpenVRActionSkeletalData * GetSkeletalData(EVRActionHand TargetHandToGet) override
+	virtual void PostInitProperties() override
 	{
-		if (TargetHandToGet == EVRActionHand::EActionHand_Right)
-		{
-			return &HandSkeletalAction.SkeletalData;
-		}
-		else
-		{
-			return &HandSkeletalActionLeft.SkeletalData;
-		}
-	}
+		Super::Super::PostInitProperties();
 
-	// Using tick and not timers because skeletal components tick anyway, kind of a waste to make another tick by adding a timer over that
-	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
-	virtual void BeginPlay() override;
+#if WITH_EDITOR
+		// If there was no skeletal action defined by the user, add a default one
+		if (!HandSkeletalActions.Num())
+		{
+			HandSkeletalActions.Add(FBPOpenVRActionInfo());
+			HandSkeletalActions[0].SkeletalData.TargetHand = EVRActionHand::EActionHand_Right;
+			HandSkeletalActions[0].SkeletalData.bGetTransformsInParentSpace = true;
+			HandSkeletalActions[0].SkeletalData.bAllowDeformingMesh = false;
+			HandSkeletalActions[0].ActionName = FString("/actions/main/in/righthand_skeleton");
+
+			HandSkeletalActions.Add(FBPOpenVRActionInfo());
+			HandSkeletalActions[1].SkeletalData.TargetHand = EVRActionHand::EActionHand_Left;
+			HandSkeletalActions[1].SkeletalData.bGetTransformsInParentSpace = true;
+			HandSkeletalActions[1].SkeletalData.bAllowDeformingMesh = false;
+			HandSkeletalActions[1].SkeletalData.bMirrorHand = true;
+			HandSkeletalActions[1].ActionName = FString("/actions/main/in/lefthand_skeleton");
+		}
+#endif
+
+	}
 };
 
 USTRUCT()

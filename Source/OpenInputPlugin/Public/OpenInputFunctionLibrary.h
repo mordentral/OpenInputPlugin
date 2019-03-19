@@ -180,6 +180,9 @@ struct OPENINPUTPLUGIN_API FBPOpenVRActionInfo
 	GENERATED_BODY()
 public:
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Default)
+		bool bGetSkeletalTransforms_WithController;
+
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 		FString ActionName;
 
@@ -204,6 +207,7 @@ public:
 		EVROpenInputSkeletalTrackingLevel SkeletalTrackingLevel;
 
 	FBPOpenVRActionHandle ActionHandleContainer;
+	FString LastHandGesture;
 
 	UPROPERTY()
 	TArray<uint8> CompressedTransforms;
@@ -394,7 +398,7 @@ public:
 
 	// Checks if a specific OpenVR device is connected, index names are assumed, they may not be exact
 	UFUNCTION(BlueprintCallable, Category = "OpenInputFunctions|SteamVR", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", CallableWithoutWorldContext))
-		static bool GetActionPose(UPARAM(ref)FBPOpenVRActionInfo & Action, class UObject* WorldContextObject,bool bGetControllerSkeleton = false, bool bGetCompressedData = false, bool bGetGestureValues = false)
+		static bool GetActionPose(UPARAM(ref)FBPOpenVRActionInfo & Action, class UObject* WorldContextObject, bool bGetCompressedData = false, bool bGetGestureValues = false)
 	{
 #if !STEAMVR_SUPPORTED_PLATFORM
 		Action.bHasValidData = false;
@@ -492,7 +496,7 @@ public:
 		TArray<vr::VRBoneTransform_t> BoneTransforms;
 		BoneTransforms.AddZeroed(Action.BoneCount);
 
-		vr::EVRSkeletalMotionRange MotionTypeToGet = bGetControllerSkeleton ? vr::EVRSkeletalMotionRange::VRSkeletalMotionRange_WithController : vr::EVRSkeletalMotionRange::VRSkeletalMotionRange_WithoutController;
+		vr::EVRSkeletalMotionRange MotionTypeToGet = Action.bGetSkeletalTransforms_WithController ? vr::EVRSkeletalMotionRange::VRSkeletalMotionRange_WithController : vr::EVRSkeletalMotionRange::VRSkeletalMotionRange_WithoutController;
 		
 		{
 			InputError = VRInput->GetSkeletalBoneData(Action.ActionHandleContainer.ActionHandle, Action.SkeletalData.bGetTransformsInParentSpace ? vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model, MotionTypeToGet, BoneTransforms.GetData(), Action.BoneCount);
