@@ -158,7 +158,7 @@ public:
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 		bool bMirrorHand;
 
-	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = Default)
+	UPROPERTY(BlueprintReadOnly, NotReplicated, Transient, Category = Default)
 		TArray<FTransform> SkeletalTransforms;
 
 	// The rotation required to rotate the finger bones back to X+
@@ -183,27 +183,30 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Default)
 		bool bGetSkeletalTransforms_WithController;
 
+	// Optional action name, if you are not using the default manifest generation then you can
+	// set a custom name here, otherwise it will automatically be filled out.
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 		FString ActionName;
 
-	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
+	// This is where you set the hand type / settings for the skeletal data
+	UPROPERTY(EditAnywhere, NotReplicated, Transient, BlueprintReadWrite, Category = Default, meta = (AllowPrivateAccess = "true"))
 		FBPOpenVRActionSkeletalData SkeletalData;
 
-	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = Default)
+	UPROPERTY(BlueprintReadOnly, NotReplicated, Transient, Category = Default)
 		TArray<int32> BoneParentIndexes;
 
 	// Not a static array because it is BP accessible
-	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = Default)
+	UPROPERTY(BlueprintReadOnly, NotReplicated, Transient, Category = Default)
 		FBPOpenVRGesturePoseData PoseFingerData;
 
-	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = Default)
+	UPROPERTY(BlueprintReadOnly, NotReplicated, Transient, Category = Default)
 		TArray<FTransform> OldSkeletalTransforms;
 
-	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = Default)
+	UPROPERTY(BlueprintReadOnly, NotReplicated, Transient, Category = Default)
 		bool bHasValidData;
 
 	// The level of trackin that the OpenInputdevice has (only valid value if this bHasValidData)
-	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = Default)
+	UPROPERTY(BlueprintReadOnly, NotReplicated, Transient, Category = Default)
 		EVROpenInputSkeletalTrackingLevel SkeletalTrackingLevel;
 
 	FBPOpenVRActionHandle ActionHandleContainer;
@@ -297,7 +300,7 @@ public:
 #endif
 
 	// Checks if a specific OpenVR device is connected, index names are assumed, they may not be exact
-	UFUNCTION(BlueprintCallable, Category = "OpenInputFunctions|SteamVR", meta = (bIgnoreSelf = "true"))
+	/*UFUNCTION(BlueprintCallable, Category = "OpenInputFunctions|SteamVR", meta = (bIgnoreSelf = "true"))
 	static bool SetActionsManifest(int32 DeviceIndex)
 {
 #if !STEAMVR_SUPPORTED_PLATFORM
@@ -320,32 +323,7 @@ public:
 		return true;
 
 #endif
-}
-
-	// Checks if a specific OpenVR device is connected, index names are assumed, they may not be exact
-	UFUNCTION(BlueprintCallable, Category = "OpenInputFunctions|SteamVR", meta = (bIgnoreSelf = "true"))
-		static bool SetupActionHandles(FBPOpenVRActionInfo & Action)
-	{
-		vr::EVRInitError Initerror;
-		vr::IVRInput * VRInput = (vr::IVRInput*)vr::VR_GetGenericInterface(vr::IVRInput_Version, &Initerror);
-
-		if (!VRInput)
-			return false;
-
-		vr::EVRInputError InputError = vr::EVRInputError::VRInputError_None;
-
-		if (Action.ActionHandleContainer.ActionHandle == vr::k_ulInvalidActionHandle)
-		{
-			InputError = VRInput->GetActionHandle(TCHAR_TO_UTF8(*Action.ActionName), &Action.ActionHandleContainer.ActionHandle);
-			if (InputError != vr::EVRInputError::VRInputError_None)
-			{
-				Action.ActionHandleContainer.ActionHandle = vr::k_ulInvalidActionHandle;
-				return false;
-			}
-		}
-
-		return true;
-	}
+}*/
 
 	// Decompresses compressed bone data from OpenInput
 	static bool DecompressSkeletalData(FBPOpenVRActionInfo & Action, UWorld * WorldToUseForScale)
@@ -417,7 +395,28 @@ public:
 
 		if (Action.ActionHandleContainer.ActionHandle == vr::k_ulInvalidActionHandle)
 		{
-			InputError = VRInput->GetActionHandle(TCHAR_TO_UTF8(*Action.ActionName), &Action.ActionHandleContainer.ActionHandle);
+
+			// Not filling in the field as that is a waste, just assuming from the data sent in
+			// Still allowing overriding manually though
+			FString ActionNameToTarget = Action.ActionName;
+
+			if (ActionNameToTarget.IsEmpty())
+			{
+				switch (Action.SkeletalData.TargetHand)
+				{
+				case EVRActionHand::EActionHand_Left:
+				{
+					ActionNameToTarget = FString("/actions/main/in/lefthand_skeleton");
+				}break;
+				case EVRActionHand::EActionHand_Right:
+				{
+					ActionNameToTarget = FString("/actions/main/in/righthand_skeleton");
+				}break;
+				default:break;
+				}
+			}
+
+			InputError = VRInput->GetActionHandle(TCHAR_TO_UTF8(*ActionNameToTarget), &Action.ActionHandleContainer.ActionHandle);
 			if (InputError != vr::EVRInputError::VRInputError_None)
 			{
 				Action.ActionHandleContainer.ActionHandle = vr::k_ulInvalidActionHandle;

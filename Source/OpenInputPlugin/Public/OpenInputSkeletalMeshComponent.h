@@ -8,13 +8,18 @@
 #include "Animation/AnimInstance.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Animation/AnimInstanceProxy.h"
+
+#if USE_WITH_VR_EXPANSION
 #include "VRBPDatatypes.h"
+#endif
+
 #include "OpenInputFunctionLibrary.h"
 #include "Engine/DataAsset.h"
 
 #include "OpenInputSkeletalMeshComponent.generated.h"
 
-USTRUCT(/*noexport, */BlueprintType, Category = "OpenInputLibrary|SkeletalTransform")
+/*
+USTRUCT(BlueprintType, Category = "OpenInputLibrary|SkeletalTransform")
 struct FSkeletalTransform_NetQuantize : public FTransform_NetQuantize
 {
 	GENERATED_USTRUCT_BODY()
@@ -69,7 +74,7 @@ struct TStructOpsTypeTraits< FSkeletalTransform_NetQuantize > : public TStructOp
 		WithNetSerializer = true
 	};
 };
-
+*/
 
 USTRUCT(BlueprintType, Category = "VRGestures")
 struct OPENINPUTPLUGIN_API FOpenInputGestureFingerPosition
@@ -185,6 +190,21 @@ public:
 		bDetectGestures = bNewDetectGestures;
 	}
 
+	UFUNCTION(BlueprintCallable, Category = "VRGestures")
+	bool GetFingerCurlAndSplayData(EVRActionHand TargetHand, FBPOpenVRGesturePoseData & OutFingerPoseData)
+	{
+		for (int i = 0; i < HandSkeletalActions.Num(); ++i)
+		{
+			if (HandSkeletalActions[i].SkeletalData.TargetHand == TargetHand)
+			{
+				OutFingerPoseData = HandSkeletalActions[i].PoseFingerData;
+				return true;
+			}
+		}
+		
+		return false;
+	}
+
 	UPROPERTY(BlueprintAssignable, Category = "VRGestures")
 		FOpenVRGestureDetected OnNewGestureDetected;
 
@@ -196,154 +216,13 @@ public:
 		UOpenInputGestureDatabase *GesturesDB;
 
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
-	void SaveCurrentPose(FString RecordingName, bool bUseFingerCurlOnly = true, EVRActionHand HandToSave = EVRActionHand::EActionHand_Right)
-	{
-
-		if (!HandSkeletalActions.Num())
-			return;
-
-		// Default to the first hand element so that single length arrays work as is.
-		FBPOpenVRActionInfo & HandSkeletalAction = HandSkeletalActions[0];
-
-		// Now check for the specific passed in hand if this is a multi hand
-		for (int i = 0; i <HandSkeletalActions.Num(); ++i)
-		{
-			if (HandSkeletalActions[i].SkeletalData.TargetHand == HandToSave)
-			{
-				HandSkeletalAction = HandSkeletalActions[i];
-				break;
-			}
-		}
-
-		if (GesturesDB)
-		{
-			FOpenInputGesture NewGesture(bUseFingerCurlOnly);
-
-			int i = 0;
-			for (; i < HandSkeletalAction.PoseFingerData.PoseFingerCurls.Num() && i < NewGesture.FingerValues.Num(); ++i)
-				NewGesture.FingerValues[i].Value = HandSkeletalAction.PoseFingerData.PoseFingerCurls[i];
-
-			if (!bUseFingerCurlOnly && HandSkeletalAction.PoseFingerData.PoseFingerSplays.Num() > 0)
-			{
-				for (; (i - vr::VRFinger_Count) < HandSkeletalAction.PoseFingerData.PoseFingerSplays.Num() && i < NewGesture.FingerValues.Num(); ++i)
-					NewGesture.FingerValues[i].Value = HandSkeletalAction.PoseFingerData.PoseFingerSplays[i - vr::VRFinger_Count];
-			}
-
-			NewGesture.bUseFingerCurlOnly = bUseFingerCurlOnly;
-			NewGesture.Name = RecordingName;
-			GesturesDB->Gestures.Add(NewGesture);
-		}
-	}
+		void SaveCurrentPose(FString RecordingName, bool bUseFingerCurlOnly = true, EVRActionHand HandToSave = EVRActionHand::EActionHand_Right);
 
 	UFUNCTION(BlueprintCallable, Category = "VRGestures", meta = (DisplayName = "DetectCurrentPose"))
-	bool K2_DetectCurrentPose(FBPOpenVRActionInfo &SkeletalAction, FOpenInputGesture & GestureOut)
-	{
-		if (!GesturesDB || GesturesDB->Gestures.Num() < 1)
-			return false;
-
-		for (const FOpenInputGesture& Gesture : GesturesDB->Gestures)
-		{	
-			// If not enough indexs to match curl values, or if this gesture requires finger splay and the controller can't do it
-			if (Gesture.FingerValues.Num() < SkeletalAction.PoseFingerData.PoseFingerCurls.Num() ||
-				(!Gesture.bUseFingerCurlOnly && SkeletalAction.SkeletalTrackingLevel == EVROpenInputSkeletalTrackingLevel::VRSkeletalTracking_Full)
-				)
-				continue;
-
-			bool bDetectedPose = true;
-			for (int i=0; i < SkeletalAction.PoseFingerData.PoseFingerCurls.Num(); ++i)
-			{
-				
-				if (!FMath::IsNearlyEqual(SkeletalAction.PoseFingerData.PoseFingerCurls[i], Gesture.FingerValues[i].Value, Gesture.FingerValues[i].Threshold))
-				{
-					bDetectedPose = false;
-					break;
-				}
-			}
-
-			if (bDetectedPose && !Gesture.bUseFingerCurlOnly && SkeletalAction.PoseFingerData.PoseFingerSplays.Num())
-			{
-				for (int i = 0; i < SkeletalAction.PoseFingerData.PoseFingerSplays.Num() && (i + vr::VRFinger_Count) < Gesture.FingerValues.Num(); ++i)
-				{
-					if (!FMath::IsNearlyEqual(SkeletalAction.PoseFingerData.PoseFingerCurls[i], Gesture.FingerValues[i + vr::VRFinger_Count].Value, Gesture.FingerValues[i + vr::VRFinger_Count].Threshold))
-					{
-						bDetectedPose = false;
-						break;
-					}
-				}
-			}
-
-			if (bDetectedPose)
-			{
-				GestureOut = Gesture;
-				return true;
-			}
-		}
-
-		return false;
-	}
+		bool K2_DetectCurrentPose(FBPOpenVRActionInfo &SkeletalAction, FOpenInputGesture & GestureOut);
 
 	// This version throws events
-	bool DetectCurrentPose(FBPOpenVRActionInfo &SkeletalAction)
-	{
-		if (!GesturesDB || GesturesDB->Gestures.Num() < 1)
-			return false;
-
-		FTransform BoneTransform = FTransform::Identity;
-
-		for (const FOpenInputGesture& Gesture : GesturesDB->Gestures)
-		{
-			// If not enough indexs to match curl values, or if this gesture requires finger splay and the controller can't do it
-			if (Gesture.FingerValues.Num() < SkeletalAction.PoseFingerData.PoseFingerCurls.Num() ||
-				(!Gesture.bUseFingerCurlOnly && SkeletalAction.SkeletalTrackingLevel == EVROpenInputSkeletalTrackingLevel::VRSkeletalTracking_Full)
-				)
-				continue;
-
-
-			bool bDetectedPose = true;
-			for (int i = 0; i < SkeletalAction.PoseFingerData.PoseFingerCurls.Num(); ++i)
-			{
-
-				if (!FMath::IsNearlyEqual(SkeletalAction.PoseFingerData.PoseFingerCurls[i], Gesture.FingerValues[i].Value, Gesture.FingerValues[i].Threshold))
-				{
-					bDetectedPose = false;
-					break;
-				}
-			}
-
-			if (bDetectedPose && !Gesture.bUseFingerCurlOnly && SkeletalAction.PoseFingerData.PoseFingerSplays.Num())
-			{
-				for (int i = 0; i < SkeletalAction.PoseFingerData.PoseFingerSplays.Num() && (i + vr::VRFinger_Count) < Gesture.FingerValues.Num(); ++i)
-				{
-					if (!FMath::IsNearlyEqual(SkeletalAction.PoseFingerData.PoseFingerCurls[i], Gesture.FingerValues[i + vr::VRFinger_Count].Value, Gesture.FingerValues[i + vr::VRFinger_Count].Threshold))
-					{
-						bDetectedPose = false;
-						break;
-					}
-				}
-			}
-
-			if (bDetectedPose)
-			{
-				if (SkeletalAction.LastHandGesture != Gesture.Name)
-				{
-					if(!SkeletalAction.LastHandGesture.IsEmpty())
-						OnGestureEnded.Broadcast(SkeletalAction.LastHandGesture, SkeletalAction.SkeletalData.TargetHand);
-					OnNewGestureDetected.Broadcast(Gesture, SkeletalAction.SkeletalData.TargetHand);
-					SkeletalAction.LastHandGesture = Gesture.Name;
-					return true;
-				}
-				else
-					return false; // Same gesture
-			}
-		}
-
-		if (!SkeletalAction.LastHandGesture.IsEmpty())
-		{
-			OnGestureEnded.Broadcast(SkeletalAction.LastHandGesture, SkeletalAction.SkeletalData.TargetHand);
-			SkeletalAction.LastHandGesture.Empty();
-		}
-		return false;
-	}
+	bool DetectCurrentPose(FBPOpenVRActionInfo &SkeletalAction);
 
 	// Need this as I can't think of another way for an actor component to make sure it isn't on the server
 	inline bool IsLocallyControlled() const
@@ -359,6 +238,7 @@ public:
 	// Using tick and not timers because skeletal components tick anyway, kind of a waste to make another tick by adding a timer over that
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 
+	// Offset by a VRExpansionPlugin controller profile, does nothing if not using that plugin
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ControllerProfile")
 		bool bOffsetByControllerProfile;
 

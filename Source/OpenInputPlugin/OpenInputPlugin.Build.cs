@@ -14,8 +14,16 @@ public class OpenInputPlugin : ModuleRules
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         //bEnforceIWYU = true;
 
-       //PublicDefinitions.Add("WITH_OPEN_VR_EXPANSION=1");
+        bool bCompileWithVRExpansion = true;
 
+        if (bCompileWithVRExpansion)
+        {
+            PrivateDefinitions.Add("USE_WITH_VR_EXPANSION=1");
+        }
+        else
+        {
+            PrivateDefinitions.Add("USE_WITH_VR_EXPANSION=0");
+        }
 		
         PublicIncludePaths.AddRange(
 			new string[] {
@@ -40,11 +48,21 @@ public class OpenInputPlugin : ModuleRules
                 "RHI",
                 "RenderCore",
                //"ShaderCore",
-				"AnimGraphRuntime",
-                "VRExpansionPlugin"
+				"AnimGraphRuntime"
             });
-			
-		if (Target.Platform == UnrealTargetPlatform.Win32 || Target.Platform == UnrealTargetPlatform.Win64 || 
+
+        if(bCompileWithVRExpansion)
+        {
+            PublicDependencyModuleNames.AddRange(
+                new string[]
+                {
+                "VRExpansionPlugin"
+                });
+        }
+
+
+
+        if (Target.Platform == UnrealTargetPlatform.Win32 || Target.Platform == UnrealTargetPlatform.Win64 || 
 		(Target.Platform == UnrealTargetPlatform.Linux && Target.Architecture.StartsWith("x86_64")))
 		{
 		PublicDependencyModuleNames.AddRange(
