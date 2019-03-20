@@ -1,4 +1,10 @@
 // COPYRIGHT 1998-2018 EPIC GAMES, INC. ALL RIGHTS RESERVED.
+
+/*
+* Special thanks to Runeberg for originally deciding to copy / alter the SteamVRController class
+* This is roughly based off of an early version of that.
+*
+*/
 #pragma once
 
 #include "ISteamVRInputPlugin.h"
