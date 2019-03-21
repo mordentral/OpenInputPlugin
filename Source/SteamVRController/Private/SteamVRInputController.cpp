@@ -228,26 +228,30 @@ struct FSteamVRAction
 
 };
 
-namespace SkeletalMotionControllerInput
+namespace OpenVRMotionControllerInput
 {
-	const FKey SteamVR_Knuckles_Left_A_CapSense("Knuckles_Left_A_CapSense");
-	const FKey SteamVR_Knuckles_Right_A_CapSense("Knuckles_Right_A_CapSense");
-	const FKey SteamVR_Knuckles_Left_B_CapSense("Knuckles_Left_B_CapSense");
-	const FKey SteamVR_Knuckles_Right_B_CapSense("Knuckles_Right_B_CapSense");
+	const FKey OpenVRInput_Left_A_CapSense("OpenVRInput_Left_A_CapSense");
+	const FKey OpenVRInput_Right_A_CapSense("OpenVRInput_Right_A_CapSense");
+	const FKey OpenVRInput_Left_B_CapSense("OpenVRInput_Left_B_CapSense");
+	const FKey OpenVRInput_Right_B_CapSense("OpenVRInput_Right_B_CapSense");
 
-	const FKey SteamVR_Knuckles_Left_Trigger_CapSense("Knuckles_L_Trigger_CapSense");
-	const FKey SteamVR_Knuckles_Right_Trigger_CapSense("Knuckles_R_Trigger_CapSense");
+	const FKey OpenVRInput_Left_Trigger_CapSense("OpenVRInput_L_Trigger_CapSense");
+	const FKey OpenVRInput_Right_Trigger_CapSense("OpenVRInput_R_Trigger_CapSense");
 
-	const FKey SteamVR_Knuckles_Left_Thumbstick_CapSense("Knuckles_L_Thumbstick_CapSense");
-	const FKey SteamVR_Knuckles_Right_Thumbstick_CapSense("Knuckles_R_Thumbstick_CapSense");
+	const FKey OpenVRInput_Left_Thumbstick_CapSense("OpenVRInput_L_Thumbstick_CapSense");
+	const FKey OpenVRInput_Right_Thumbstick_CapSense("OpenVRInput_R_Thumbstick_CapSense");
 
-	const FKey SteamVR_Knuckles_Left_Trackpad_CapSense("Knuckles_L_Trackpad_CapSense");
-	const FKey SteamVR_Knuckles_Right_Trackpad_CapSense("Knuckles_R_Trackpad_CapSense");
+	const FKey OpenVRInput_Left_Trackpad_CapSense("OpenVRInput_L_Trackpad_CapSense");
+	const FKey OpenVRInput_Right_Trackpad_CapSense("OpenVRInput_R_Trackpad_CapSense");
 
-	const FKey SteamVR_Knuckles_Left_Trackpad_X("Knuckles_Left_Trackpad_X");
-	const FKey SteamVR_Knuckles_Right_Trackpad_X("Knuckles_Right_Trackpad_X");
-	const FKey SteamVR_Knuckles_Left_Trackpad_Y("Knuckles_Left_Trackpad_Y");
-	const FKey SteamVR_Knuckles_Right_Trackpad_Y("Knuckles_Right_Trackpad_Y");
+	const FKey OpenVRInput_Left_Trackpad_X("OpenVRInput_Left_Trackpad_X");
+	const FKey OpenVRInput_Right_Trackpad_X("OpenVRInput_Right_Trackpad_X");
+
+	const FKey OpenVRInput_Left_Trackpad_Y("OpenVRInput_Left_Trackpad_Y");
+	const FKey OpenVRInput_Right_Trackpad_Y("OpenVRInput_Right_Trackpad_Y");
+
+	const FKey OpenVRInput_Left_Pinch("OpenVRInput_Left_Pinch");
+	const FKey OpenVRInput_Right_Pinch("OpenVRInput_Right_Pinch");
 }
 
 class FSteamVRInputController : public IInputDevice, public FXRMotionControllerBase, public IHapticDevice
@@ -328,7 +332,7 @@ public:
 			ButtonRepeatDelay = 0.1f;
 
 			InitControllerMappings();
-			InitKnucklesControllerKeys();
+			InitOpenVRControllerKeys();
 			BuildActionManifest();
 
 			IModularFeatures::Get().RegisterModularFeature(GetModularFeatureName(), this);
@@ -359,31 +363,31 @@ public:
 	}
 
 
-	void InitKnucklesControllerKeys()
+	void InitOpenVRControllerKeys()
 	{
 		if (bEnableVRInput)
 		{
-			// Adding additional Knuckles buttons here as it is not available as an abstracted input in current Engine implementation
-			// This will NOT emit any axes info for performance reasons, they MUST be mapped in the Axis Mappings via the UE & SteamInput System
-			// Bindings however are auto-generated if they do not exist
-			EKeys::AddKey(FKeyDetails(SkeletalMotionControllerInput::SteamVR_Knuckles_Left_A_CapSense, LOCTEXT("Knuckles_Left_A_CapSense", "SteamVR Knuckles (L) A CapSense"), FKeyDetails::GamepadKey));
-			EKeys::AddKey(FKeyDetails(SkeletalMotionControllerInput::SteamVR_Knuckles_Right_A_CapSense, LOCTEXT("Knuckles_Right_A_CapSense", "SteamVR Knuckles (R) A CapSense"), FKeyDetails::GamepadKey));
-			EKeys::AddKey(FKeyDetails(SkeletalMotionControllerInput::SteamVR_Knuckles_Left_B_CapSense, LOCTEXT("Knuckles_Left_B_CapSense", "SteamVR Knuckles (L) B CapSense"), FKeyDetails::GamepadKey));
-			EKeys::AddKey(FKeyDetails(SkeletalMotionControllerInput::SteamVR_Knuckles_Right_B_CapSense, LOCTEXT("Knuckles_Right_B_CapSense", "SteamVR Knuckles (R) B CapSense"), FKeyDetails::GamepadKey));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_A_CapSense, LOCTEXT("OpenVR_Left_A_CapSense", "OpenVRInput (L) A CapSense"), FKeyDetails::GamepadKey));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_A_CapSense, LOCTEXT("OpenVRInput_Right_A_CapSense", "OpenVRInput (R) A CapSense"), FKeyDetails::GamepadKey));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_B_CapSense, LOCTEXT("OpenVRInput_Left_B_CapSense", "OpenVRInput (L) B CapSense"), FKeyDetails::GamepadKey));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_B_CapSense, LOCTEXT("OpenVRInput_Right_B_CapSense", "OpenVRInput (R) B CapSense"), FKeyDetails::GamepadKey));
 									  
-			EKeys::AddKey(FKeyDetails(SkeletalMotionControllerInput::SteamVR_Knuckles_Left_Trigger_CapSense, LOCTEXT("Knuckles_L_Trigger_CapSense", "SteamVR Knuckles (L) Trigger CapSense"), FKeyDetails::GamepadKey));
-			EKeys::AddKey(FKeyDetails(SkeletalMotionControllerInput::SteamVR_Knuckles_Right_Trigger_CapSense, LOCTEXT("Knuckles_R_Trigger_CapSense", "SteamVR Knuckles (R) Trigger CapSense"), FKeyDetails::GamepadKey));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Trigger_CapSense, LOCTEXT("OpenVRInput_L_Trigger_CapSense", "OpenVRInput (L) Trigger CapSense"), FKeyDetails::GamepadKey));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Trigger_CapSense, LOCTEXT("OpenVRInput_R_Trigger_CapSense", "OpenVRInput (R) Trigger CapSense"), FKeyDetails::GamepadKey));
 									  
-			EKeys::AddKey(FKeyDetails(SkeletalMotionControllerInput::SteamVR_Knuckles_Left_Thumbstick_CapSense, LOCTEXT("Knuckles_L_Thumbstick_CapSense", "SteamVR Knuckles (L) Thumbstick CapSense"), FKeyDetails::GamepadKey));
-			EKeys::AddKey(FKeyDetails(SkeletalMotionControllerInput::SteamVR_Knuckles_Right_Thumbstick_CapSense, LOCTEXT("Knuckles_R_Thumbstick_CapSense", "SteamVR Knuckles (R) Thumbstick CapSense"), FKeyDetails::GamepadKey));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Thumbstick_CapSense, LOCTEXT("OpenVRInput_L_Thumbstick_CapSense", "OpenVRInput (L) Thumbstick CapSense"), FKeyDetails::GamepadKey));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Thumbstick_CapSense, LOCTEXT("OpenVRInput_R_Thumbstick_CapSense", "OpenVRInput (R) Thumbstick CapSense"), FKeyDetails::GamepadKey));
 									  
-			EKeys::AddKey(FKeyDetails(SkeletalMotionControllerInput::SteamVR_Knuckles_Left_Trackpad_CapSense, LOCTEXT("Knuckles_L_Trackpad_CapSense", "SteamVR Knuckles (L) Trackpad CapSense"), FKeyDetails::GamepadKey));
-			EKeys::AddKey(FKeyDetails(SkeletalMotionControllerInput::SteamVR_Knuckles_Right_Trackpad_CapSense, LOCTEXT("Knuckles_R_Trackpad_CapSense", "SteamVR Knuckles (R) Trackpad CapSense"), FKeyDetails::GamepadKey));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Trackpad_CapSense, LOCTEXT("OpenVRInput_L_Trackpad_CapSense", "OpenVRInput (L) Trackpad CapSense"), FKeyDetails::GamepadKey));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Trackpad_CapSense, LOCTEXT("OpenVRInput_R_Trackpad_CapSense", "OpenVRInput (R) Trackpad CapSense"), FKeyDetails::GamepadKey));
 									  
-			EKeys::AddKey(FKeyDetails(SkeletalMotionControllerInput::SteamVR_Knuckles_Left_Trackpad_X, LOCTEXT("Knuckles_Left_Trackpad_X", "SteamVR Knuckles (L) Trackpad X"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));
-			EKeys::AddKey(FKeyDetails(SkeletalMotionControllerInput::SteamVR_Knuckles_Right_Trackpad_X, LOCTEXT("Knuckles_Right_Trackpad_X", "SteamVR Knuckles (R) Trackpad X"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));
-			EKeys::AddKey(FKeyDetails(SkeletalMotionControllerInput::SteamVR_Knuckles_Left_Trackpad_Y, LOCTEXT("Knuckles_Left_Trackpad_Y", "SteamVR Knuckles (L) Trackpad Y"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));
-			EKeys::AddKey(FKeyDetails(SkeletalMotionControllerInput::SteamVR_Knuckles_Right_Trackpad_Y, LOCTEXT("Knuckles_Right_Trackpad_Y", "SteamVR Knuckles (R) Trackpad Y"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Trackpad_X, LOCTEXT("OpenVRInput_Left_Trackpad_X", "OpenVRInput (L) Trackpad X"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Trackpad_X, LOCTEXT("OpenVRInput_Right_Trackpad_X", "OpenVRInput (R) Trackpad X"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Trackpad_Y, LOCTEXT("OpenVRInput_Left_Trackpad_Y", "OpenVRInput (L) Trackpad Y"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Trackpad_Y, LOCTEXT("OpenVRInput_Right_Trackpad_Y", "OpenVRInput (R) Trackpad Y"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));
+
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Pinch, LOCTEXT("OpenVRInput_Left_Pinch", "OpenVRInput (L) Pinch"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Pinch, LOCTEXT("OpenVRInput_Right_Pinch", "OpenVRInput (R) Pinch"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));
 		}
 	}
 #endif // STEAMVRCONTROLLER_SUPPORTED_PLATFORMS
@@ -1377,7 +1381,7 @@ private:
 					}
 				}
 
-				// Haptics
+				/*// Haptics
 				{
 					FString ConstActionPath = FString("/actions/main/out/VibrateLeft");
 					Actions.Add(FSteamVRAction(ConstActionPath, FSteamVRAction::EActionType::Vibration, true, FName(TEXT("Haptic (Left)"))));
@@ -1385,7 +1389,7 @@ private:
 				{
 					FString ConstActionPath = FString("/actions/main/out/VibrateRight");
 					Actions.Add(FSteamVRAction(ConstActionPath, FSteamVRAction::EActionType::Vibration, true, FName(TEXT("Haptic (Right)"))));
-				}
+				}*/
 			}
 
 			if (Actions.Num() > 0)
