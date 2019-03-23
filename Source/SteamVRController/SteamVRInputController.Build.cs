@@ -38,6 +38,9 @@ public class SteamVRInputController : ModuleRules
             PrivateDependencyModuleNames.Add("UnrealEd");
         }
 
+        // Add the bindings folder to our packaging output
+        RuntimeDependencies.Add(new RuntimeDependency("$(ProjectDir)/Config/SteamVRBindings/..."));
+
         AddEngineThirdPartyPrivateStaticDependencies(Target, "OpenVR");
 
         if ( Target.Platform == UnrealTargetPlatform.Win64 || Target.Platform == UnrealTargetPlatform.Win32 || (Target.Platform == UnrealTargetPlatform.Linux && Target.Architecture.StartsWith("x86_64")) )
