@@ -230,19 +230,19 @@ struct FSteamVRAction
 
 namespace OpenVRMotionControllerInput
 {
-	const FKey OpenVRInput_Left_A_CapSense("OpenVRInput_Left_A_CapSense");
-	const FKey OpenVRInput_Right_A_CapSense("OpenVRInput_Right_A_CapSense");
-	const FKey OpenVRInput_Left_B_CapSense("OpenVRInput_Left_B_CapSense");
-	const FKey OpenVRInput_Right_B_CapSense("OpenVRInput_Right_B_CapSense");
+	const FKey OpenVRInput_Left_A_Touch("OpenVRInput_Left_A_Touch");
+	const FKey OpenVRInput_Right_A_Touch("OpenVRInput_Right_A_Touch");
+	const FKey OpenVRInput_Left_B_Touch("OpenVRInput_Left_B_Touch");
+	const FKey OpenVRInput_Right_B_Touch("OpenVRInput_Right_B_Touch");
 
-	const FKey OpenVRInput_Left_Trigger_CapSense("OpenVRInput_L_Trigger_CapSense");
-	const FKey OpenVRInput_Right_Trigger_CapSense("OpenVRInput_R_Trigger_CapSense");
+	const FKey OpenVRInput_Left_Trigger_Touch("OpenVRInput_L_Trigger_Touch");
+	const FKey OpenVRInput_Right_Trigger_Touch("OpenVRInput_R_Trigger_Touch");
 
-	const FKey OpenVRInput_Left_Thumbstick_CapSense("OpenVRInput_L_Thumbstick_CapSense");
-	const FKey OpenVRInput_Right_Thumbstick_CapSense("OpenVRInput_R_Thumbstick_CapSense");
+	const FKey OpenVRInput_Left_Thumbstick_Touch("OpenVRInput_L_Thumbstick_Touch");
+	const FKey OpenVRInput_Right_Thumbstick_Touch("OpenVRInput_R_Thumbstick_Touch");
 
-	const FKey OpenVRInput_Left_Trackpad_CapSense("OpenVRInput_L_Trackpad_CapSense");
-	const FKey OpenVRInput_Right_Trackpad_CapSense("OpenVRInput_R_Trackpad_CapSense");
+	const FKey OpenVRInput_Left_Trackpad_Touch("OpenVRInput_L_Trackpad_Touch");
+	const FKey OpenVRInput_Right_Trackpad_Touch("OpenVRInput_R_Trackpad_Touch");
 
 	const FKey OpenVRInput_Left_Trackpad_X("OpenVRInput_Left_Trackpad_X");
 	const FKey OpenVRInput_Right_Trackpad_X("OpenVRInput_Right_Trackpad_X");
@@ -367,19 +367,19 @@ public:
 	{
 		if (bEnableVRInput)
 		{
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_A_CapSense, LOCTEXT("OpenVR_Left_A_CapSense", "OpenVRInput (L) A CapSense"), FKeyDetails::GamepadKey));
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_A_CapSense, LOCTEXT("OpenVRInput_Right_A_CapSense", "OpenVRInput (R) A CapSense"), FKeyDetails::GamepadKey));
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_B_CapSense, LOCTEXT("OpenVRInput_Left_B_CapSense", "OpenVRInput (L) B CapSense"), FKeyDetails::GamepadKey));
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_B_CapSense, LOCTEXT("OpenVRInput_Right_B_CapSense", "OpenVRInput (R) B CapSense"), FKeyDetails::GamepadKey));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_A_Touch, LOCTEXT("OpenVR_Left_A_Touch", "OpenVRInput (L) A Touch"), FKeyDetails::GamepadKey));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_A_Touch, LOCTEXT("OpenVRInput_Right_A_Touch", "OpenVRInput (R) A Touch"), FKeyDetails::GamepadKey));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_B_Touch, LOCTEXT("OpenVRInput_Left_B_Touch", "OpenVRInput (L) B Touch"), FKeyDetails::GamepadKey));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_B_Touch, LOCTEXT("OpenVRInput_Right_B_Touch", "OpenVRInput (R) B Touch"), FKeyDetails::GamepadKey));
 									  
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Trigger_CapSense, LOCTEXT("OpenVRInput_L_Trigger_CapSense", "OpenVRInput (L) Trigger CapSense"), FKeyDetails::GamepadKey));
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Trigger_CapSense, LOCTEXT("OpenVRInput_R_Trigger_CapSense", "OpenVRInput (R) Trigger CapSense"), FKeyDetails::GamepadKey));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Trigger_Touch, LOCTEXT("OpenVRInput_L_Trigger_Touch", "OpenVRInput (L) Trigger Touch"), FKeyDetails::GamepadKey));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Trigger_Touch, LOCTEXT("OpenVRInput_R_Trigger_Touch", "OpenVRInput (R) Trigger Touch"), FKeyDetails::GamepadKey));
 									  
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Thumbstick_CapSense, LOCTEXT("OpenVRInput_L_Thumbstick_CapSense", "OpenVRInput (L) Thumbstick CapSense"), FKeyDetails::GamepadKey));
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Thumbstick_CapSense, LOCTEXT("OpenVRInput_R_Thumbstick_CapSense", "OpenVRInput (R) Thumbstick CapSense"), FKeyDetails::GamepadKey));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Thumbstick_Touch, LOCTEXT("OpenVRInput_L_Thumbstick_Touch", "OpenVRInput (L) Thumbstick Touch"), FKeyDetails::GamepadKey));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Thumbstick_Touch, LOCTEXT("OpenVRInput_R_Thumbstick_Touch", "OpenVRInput (R) Thumbstick Touch"), FKeyDetails::GamepadKey));
 									  
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Trackpad_CapSense, LOCTEXT("OpenVRInput_L_Trackpad_CapSense", "OpenVRInput (L) Trackpad CapSense"), FKeyDetails::GamepadKey));
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Trackpad_CapSense, LOCTEXT("OpenVRInput_R_Trackpad_CapSense", "OpenVRInput (R) Trackpad CapSense"), FKeyDetails::GamepadKey));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Trackpad_Touch, LOCTEXT("OpenVRInput_L_Trackpad_Touch", "OpenVRInput (L) Trackpad Touch"), FKeyDetails::GamepadKey));
+			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Trackpad_Touch, LOCTEXT("OpenVRInput_R_Trackpad_Touch", "OpenVRInput (R) Trackpad Touch"), FKeyDetails::GamepadKey));
 									  
 			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Trackpad_X, LOCTEXT("OpenVRInput_Left_Trackpad_X", "OpenVRInput (L) Trackpad X"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));
 			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Trackpad_X, LOCTEXT("OpenVRInput_Right_Trackpad_X", "OpenVRInput (R) Trackpad X"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));

@@ -29,6 +29,10 @@ The skeletal action names used are below (auto set if the skeletal action name i
 
 I am setting the plugin to default to these for now when none have been provided
 
+
+You can access the local binding interface from your desktop here:
+http://localhost:8998/dashboard/controllerbinding.html
+
 ___________________________________________________________________________________________________________________________________________________________________
 
 MAIN SETUP
