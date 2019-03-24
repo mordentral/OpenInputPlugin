@@ -219,7 +219,7 @@ public:
 
 	// MappedBonePairs, if you leave it blank then they will auto generate based off of the SkeletonType
 	// Otherwise, fill out yourself.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Skeletal, meta = (PinShownByDefault))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Skeletal, meta = (PinHiddenByDefault))
 		FBPSkeletalMappingData MappedBonePairs;
 
 	bool bIsOpenInputAnimationInstance;
