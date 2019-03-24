@@ -205,13 +205,6 @@ struct OPENINPUTPLUGIN_API FAnimNode_ApplyOpenInputTransform : public FAnimNode_
 
 public:
 
-	/** All combined settings required for this node to process mapped bones */
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = BodyState, meta = (PinShownByDefault))
-	//FMappedBoneAnimData MappedBoneAnimData;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Skeletal/*, meta = (PinShownByDefault)*/)
-		FBPSkeletalMappingData MappedBonePairs;
-
 	// Generally used when not passing in custom bone mappings, defines the auto mapping style
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Skeletal, meta = (PinShownByDefault))
 		EVROpenVRSkeletonType SkeletonType;
@@ -223,6 +216,11 @@ public:
 	// Generally used when not passing in custom bone mappings, defines the auto mapping style
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Skeletal, meta = (PinShownByDefault))
 		FBPOpenVRActionSkeletalData OptionalStoredActionInfo;
+
+	// MappedBonePairs, if you leave it blank then they will auto generate based off of the SkeletonType
+	// Otherwise, fill out yourself.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Skeletal, meta = (PinShownByDefault))
+		FBPSkeletalMappingData MappedBonePairs;
 
 	bool bIsOpenInputAnimationInstance;
 

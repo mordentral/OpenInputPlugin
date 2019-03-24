@@ -39,7 +39,10 @@ void FAnimNode_ApplyOpenInputTransform::InitializeBoneReferences(const FBoneCont
 
 		if (AssetSkeleton)
 		{
-			MappedBonePairs.ConstructDefaultMappings(SkeletonType, bSkipRootBone);
+
+			// If our bone pairs are empty, then setup our sane defaults
+			if(!MappedBonePairs.BonePairs.Num())
+				MappedBonePairs.ConstructDefaultMappings(SkeletonType, bSkipRootBone);
 
 			for (FBPOpenVRSkeletalPair& BonePair : MappedBonePairs.BonePairs)
 			{
