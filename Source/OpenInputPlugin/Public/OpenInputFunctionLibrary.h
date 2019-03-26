@@ -23,6 +23,12 @@
 
 #include "OpenInputFunctionLibrary.generated.h"
 
+namespace OpenInputFunctionLibraryStatics
+{
+	const FString LeftHand_SkeletalActionName("/actions/main/in/lefthand_skeleton");
+	const FString RightHand_SkeletalActionName("/actions/main/in/righthand_skeleton");
+}
+
 // Holds the action handle in a BP friendly form
 USTRUCT(BlueprintType, Category = "VRExpansionFunctions|SteamVR|HandSkeleton")
 struct OPENINPUTPLUGIN_API FBPOpenVRActionHandle
@@ -405,11 +411,11 @@ public:
 				{
 				case EVRActionHand::EActionHand_Left:
 				{
-					Action.ActionName = FString("/actions/main/in/lefthand_skeleton");
+					Action.ActionName = OpenInputFunctionLibraryStatics::LeftHand_SkeletalActionName;
 				}break;
 				case EVRActionHand::EActionHand_Right:
 				{
-					Action.ActionName = FString("/actions/main/in/righthand_skeleton");
+					Action.ActionName = OpenInputFunctionLibraryStatics::RightHand_SkeletalActionName;
 				}break;
 				default:break;
 				}
@@ -622,6 +628,67 @@ public:
 			BlankActionToFill.SkeletalData.SkeletalTransforms[i] = CONVERT_STEAMTRANS_TO_FTRANS(BoneTransforms[i], WorldToMeters);
 
 		BlankActionToFill.bHasValidData = true;
+		return true;
+#endif
+	}
+
+	// Gets the curl and splay values of a hand, this is generally only used if you aren't getting the full pose and filling out an ActionInfo structure.
+	// If the optional custom action name is blank then it will use the plugins default values
+	UFUNCTION(BlueprintCallable, Category = "OpenInputFunctions|SteamVR", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", CallableWithoutWorldContext))
+		static bool GetHandCurlAndSplayValues(EVRActionHand TargetHand, UPARAM(ref) FBPOpenVRGesturePoseData & CurlAndSplayValuesOut, class UObject* WorldContextObject, FString OptionalCustomActionName)
+	{
+#if !STEAMVR_SUPPORTED_PLATFORM
+		return false;
+#else
+		vr::EVRInitError Initerror;
+		vr::IVRInput * VRInput = (vr::IVRInput*)vr::VR_GetGenericInterface(vr::IVRInput_Version, &Initerror);
+
+		if (!VRInput)
+			return false;
+
+		vr::EVRInputError InputError = vr::EVRInputError::VRInputError_None;
+
+		if (OptionalCustomActionName.IsEmpty())
+		{
+			switch (TargetHand)
+			{
+			case EVRActionHand::EActionHand_Left:
+			{
+				OptionalCustomActionName = OpenInputFunctionLibraryStatics::LeftHand_SkeletalActionName;
+			}break;
+			case EVRActionHand::EActionHand_Right:
+			{
+				OptionalCustomActionName = OpenInputFunctionLibraryStatics::RightHand_SkeletalActionName;
+			}break;
+			default:break;
+			}
+		}
+
+		vr::VRActionHandle_t ActionHandle;
+		InputError = VRInput->GetActionHandle(TCHAR_TO_UTF8(*OptionalCustomActionName), &ActionHandle);
+		if (InputError != vr::EVRInputError::VRInputError_None || ActionHandle == vr::k_ulInvalidActionHandle)
+		{
+			return false;
+		}
+
+		vr::VRSkeletalSummaryData_t SkeletalSummaryData;
+		VRInput->GetSkeletalSummaryData(ActionHandle, &SkeletalSummaryData);
+
+		if (InputError != vr::EVRInputError::VRInputError_None)
+			return false;
+
+		CurlAndSplayValuesOut.PoseFingerCurls.Reset(vr::VRFinger_Count);
+		for (int i = 0; i < vr::VRFinger_Count; ++i)
+		{
+			CurlAndSplayValuesOut.PoseFingerCurls.Add(SkeletalSummaryData.flFingerCurl[i]);
+		}
+
+		CurlAndSplayValuesOut.PoseFingerSplays.Reset(vr::VRFingerSplay_Count);
+		for (int i = 0; i < vr::VRFingerSplay_Count; ++i)
+		{
+			CurlAndSplayValuesOut.PoseFingerSplays.Add(SkeletalSummaryData.flFingerSplay[i]);
+		}
+
 		return true;
 #endif
 	}
