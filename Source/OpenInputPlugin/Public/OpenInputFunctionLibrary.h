@@ -177,6 +177,7 @@ public:
 		AdditionTransform = FTransform(FRotator(0.f, 90.f, 90.f), FVector::ZeroVector, FVector(1.f));
 		bAllowDeformingMesh = true;
 		bMirrorHand = false;
+		TargetHand = EVRActionHand::EActionHand_Right;
 	}
 };
 
