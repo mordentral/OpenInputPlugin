@@ -216,7 +216,8 @@ public:
 		EVROpenInputSkeletalTrackingLevel SkeletalTrackingLevel;
 
 	FBPOpenVRActionHandle ActionHandleContainer;
-	FString LastHandGesture;
+	FName LastHandGesture;
+	int32 LastHandGestureIndex;
 
 	UPROPERTY()
 	TArray<uint8> CompressedTransforms;
@@ -233,6 +234,8 @@ public:
 		BoneCount = 0;
 		SkeletalTrackingLevel = EVROpenInputSkeletalTrackingLevel::VRSkeletalTrackingLevel_Max;
 		bGetSkeletalTransforms_WithController = false;
+		LastHandGestureIndex = INDEX_NONE;
+		LastHandGesture = NAME_None;
 	}
 
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)

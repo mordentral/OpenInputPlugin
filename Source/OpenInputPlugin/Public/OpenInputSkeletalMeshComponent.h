@@ -116,7 +116,7 @@ public:
 
 	// Name of the recorded gesture
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGesture")
-		FString Name;
+		FName Name;
 
 	// Samples in the recorded gesture
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "VRGesture")
@@ -130,12 +130,14 @@ public:
 	{
 		bUseFingerCurlOnly = false;
 		InitPoseValues();
+		Name = NAME_None;
 	}
 
 	FOpenInputGesture(bool bOnlyFingerCurl)
 	{
 		bUseFingerCurlOnly = bOnlyFingerCurl;
 		InitPoseValues();
+		Name = NAME_None;
 	}
 
 	void InitPoseValues()
@@ -169,8 +171,8 @@ public:
 	}
 };
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOpenVRGestureDetected, const FOpenInputGesture &, GestureDetected, EVRActionHand, ActionHandType);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOpenVRGestureEnded, const FString &, GestureEnded, EVRActionHand, ActionHandType);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOpenVRGestureDetected, const FName &, GestureDetected, int32, GestureIndex, EVRActionHand, ActionHandType);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOpenVRGestureEnded, const FName &, GestureEnded, int32, GestureIndex, EVRActionHand, ActionHandType);
 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent))
 class OPENINPUTPLUGIN_API UOpenInputSkeletalMeshComponent : public USkeletalMeshComponent
@@ -216,7 +218,7 @@ public:
 		UOpenInputGestureDatabase *GesturesDB;
 
 	UFUNCTION(BlueprintCallable, Category = "VRGestures")
-		void SaveCurrentPose(FString RecordingName, bool bUseFingerCurlOnly = true, EVRActionHand HandToSave = EVRActionHand::EActionHand_Right);
+		void SaveCurrentPose(FName RecordingName, bool bUseFingerCurlOnly = true, EVRActionHand HandToSave = EVRActionHand::EActionHand_Right);
 
 	UFUNCTION(BlueprintCallable, Category = "VRGestures", meta = (DisplayName = "DetectCurrentPose"))
 		bool K2_DetectCurrentPose(FBPOpenVRActionInfo &SkeletalAction, FOpenInputGesture & GestureOut);

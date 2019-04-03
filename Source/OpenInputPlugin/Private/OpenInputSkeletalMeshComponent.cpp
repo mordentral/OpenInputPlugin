@@ -232,7 +232,7 @@ void UOpenInputSkeletalMeshComponent::TickComponent(float DeltaTime, enum ELevel
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
 
-void UOpenInputSkeletalMeshComponent::SaveCurrentPose(FString RecordingName, bool bUseFingerCurlOnly, EVRActionHand HandToSave)
+void UOpenInputSkeletalMeshComponent::SaveCurrentPose(FName RecordingName, bool bUseFingerCurlOnly, EVRActionHand HandToSave)
 {
 
 	if (!HandSkeletalActions.Num())
@@ -325,19 +325,19 @@ bool UOpenInputSkeletalMeshComponent::DetectCurrentPose(FBPOpenVRActionInfo &Ske
 
 	FTransform BoneTransform = FTransform::Identity;
 
-	for (const FOpenInputGesture& Gesture : GesturesDB->Gestures)
+	for (auto GestureIterator = GesturesDB->Gestures.CreateConstIterator(); GestureIterator; ++GestureIterator)
 	{
+		const FOpenInputGesture &Gesture = *GestureIterator;
+
 		// If not enough indexs to match curl values, or if this gesture requires finger splay and the controller can't do it
 		if (Gesture.FingerValues.Num() < SkeletalAction.PoseFingerData.PoseFingerCurls.Num() ||
 			(!Gesture.bUseFingerCurlOnly && SkeletalAction.SkeletalTrackingLevel == EVROpenInputSkeletalTrackingLevel::VRSkeletalTracking_Full)
 			)
 			continue;
 
-
 		bool bDetectedPose = true;
 		for (int i = 0; i < SkeletalAction.PoseFingerData.PoseFingerCurls.Num(); ++i)
 		{
-
 			if (!FMath::IsNearlyEqual(SkeletalAction.PoseFingerData.PoseFingerCurls[i], Gesture.FingerValues[i].Value, Gesture.FingerValues[i].Threshold))
 			{
 				bDetectedPose = false;
@@ -361,10 +361,13 @@ bool UOpenInputSkeletalMeshComponent::DetectCurrentPose(FBPOpenVRActionInfo &Ske
 		{
 			if (SkeletalAction.LastHandGesture != Gesture.Name)
 			{
-				if (!SkeletalAction.LastHandGesture.IsEmpty())
-					OnGestureEnded.Broadcast(SkeletalAction.LastHandGesture, SkeletalAction.SkeletalData.TargetHand);
-				OnNewGestureDetected.Broadcast(Gesture, SkeletalAction.SkeletalData.TargetHand);
+				if (SkeletalAction.LastHandGesture != NAME_None)
+					OnGestureEnded.Broadcast(SkeletalAction.LastHandGesture, SkeletalAction.LastHandGestureIndex, SkeletalAction.SkeletalData.TargetHand);
+
 				SkeletalAction.LastHandGesture = Gesture.Name;
+				SkeletalAction.LastHandGestureIndex = GestureIterator.GetIndex();
+				OnNewGestureDetected.Broadcast(SkeletalAction.LastHandGesture, SkeletalAction.LastHandGestureIndex, SkeletalAction.SkeletalData.TargetHand);
+
 				return true;
 			}
 			else
@@ -372,10 +375,11 @@ bool UOpenInputSkeletalMeshComponent::DetectCurrentPose(FBPOpenVRActionInfo &Ske
 		}
 	}
 
-	if (!SkeletalAction.LastHandGesture.IsEmpty())
+	if (SkeletalAction.LastHandGesture != NAME_None)
 	{
-		OnGestureEnded.Broadcast(SkeletalAction.LastHandGesture, SkeletalAction.SkeletalData.TargetHand);
-		SkeletalAction.LastHandGesture.Empty();
+		OnGestureEnded.Broadcast(SkeletalAction.LastHandGesture, SkeletalAction.LastHandGestureIndex, SkeletalAction.SkeletalData.TargetHand);
+		SkeletalAction.LastHandGesture = NAME_None;
+		SkeletalAction.LastHandGestureIndex = INDEX_NONE;
 	}
 	return false;
 }
