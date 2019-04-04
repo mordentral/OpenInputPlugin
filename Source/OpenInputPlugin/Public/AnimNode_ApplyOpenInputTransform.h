@@ -195,6 +195,7 @@ public:
 	{
 		bInitialized = false;
 		bMergeMissingBonesUE4 = false;
+		TargetHand = EVRActionHand::EActionHand_Right;
 	}
 };
 

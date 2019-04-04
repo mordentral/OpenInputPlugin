@@ -177,6 +177,7 @@ public:
 		AdditionTransform = FTransform(FRotator(0.f, 90.f, 90.f), FVector::ZeroVector, FVector(1.f));
 		bAllowDeformingMesh = true;
 		bMirrorHand = false;
+		TargetHand = EVRActionHand::EActionHand_Right;
 	}
 };
 
@@ -693,6 +694,60 @@ public:
 		}
 
 		return true;
+#endif
+	}
+
+	// Checks if a specific OpenVR device is connected, index names are assumed, they may not be exact
+	UFUNCTION(BlueprintCallable, Category = "OpenInputFunctions|SteamVR", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", CallableWithoutWorldContext))
+	static bool GetSkeletalTrackingLevel(EVROpenInputSkeletalTrackingLevel & SkeletalTrackingLevelOut, EVRActionHand HandToRetreive)
+	{
+#if !STEAMVR_SUPPORTED_PLATFORM
+		SkeletalTrackingLevelOut = EVROpenInputSkeletalTrackingLevel::VRSkeletalTrackingLevel_Max;
+		return false;
+#else
+		vr::EVRInitError Initerror;
+		vr::IVRInput * VRInput = (vr::IVRInput*)vr::VR_GetGenericInterface(vr::IVRInput_Version, &Initerror);
+
+		if (!VRInput)
+			return false;
+
+		vr::EVRInputError InputError = vr::EVRInputError::VRInputError_None;
+
+		vr::VRActionHandle_t ActionHandle = vr::k_ulInvalidActionHandle;
+		FString ActionName;
+
+		switch (HandToRetreive)
+		{
+		case EVRActionHand::EActionHand_Left:
+		{
+			ActionName = OpenInputFunctionLibraryStatics::LeftHand_SkeletalActionName;
+		}break;
+		case EVRActionHand::EActionHand_Right:
+		{
+			ActionName = OpenInputFunctionLibraryStatics::RightHand_SkeletalActionName;
+		}break;
+		default:break;
+		}
+
+		InputError = VRInput->GetActionHandle(TCHAR_TO_UTF8(*ActionName), &ActionHandle);
+		if (InputError != vr::EVRInputError::VRInputError_None)
+		{
+			SkeletalTrackingLevelOut = EVROpenInputSkeletalTrackingLevel::VRSkeletalTrackingLevel_Max;
+			return false;
+		}
+
+		vr::EVRSkeletalTrackingLevel TrackingLevel;
+		VRInput->GetSkeletalTrackingLevel(ActionHandle, &TrackingLevel);
+
+		if (InputError != vr::EVRInputError::VRInputError_None)
+		{
+			SkeletalTrackingLevelOut = EVROpenInputSkeletalTrackingLevel::VRSkeletalTrackingLevel_Max;
+			return false;
+		}
+
+		SkeletalTrackingLevelOut = (EVROpenInputSkeletalTrackingLevel)TrackingLevel;
+		return true;
+
 #endif
 	}
 };	
