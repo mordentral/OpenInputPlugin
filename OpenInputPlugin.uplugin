@@ -29,7 +29,7 @@
 		{
 			"Name": "SteamVRInputController",
 			"Type": "RunTime",
-			"LoadingPhase": "Default",
+			"LoadingPhase": "PostDefault",
 			"WhitelistPlatforms" :
 			[
 				"Win64",

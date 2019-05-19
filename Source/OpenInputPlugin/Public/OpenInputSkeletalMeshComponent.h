@@ -8,6 +8,7 @@
 #include "Animation/AnimInstance.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Animation/AnimInstanceProxy.h"
+#include "AnimNode_ApplyOpenInputTransform.h"
 
 #if USE_WITH_VR_EXPANSION
 #include "VRBPDatatypes.h"
@@ -233,7 +234,7 @@ public:
 		const AActor* MyOwner = GetOwner();
 		const APawn* MyPawn = Cast<APawn>(MyOwner);
 		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner && MyOwner->Role == ENetRole::ROLE_Authority);
-
+		// #TODO: Convert to new 4.22 HasLocalNetOwner eventually
 		// HasLocalNetOwner
 	}
 
@@ -258,21 +259,43 @@ public:
 	virtual void Activate(bool bReset = false) override;
 	virtual void Deactivate() override;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SkeletalData|Actions"/*, Replicated, ReplicatedUsing = OnRep_SkeletalTransforms*/)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SkeletalData|Actions")
 		TArray<FBPOpenVRActionInfo> HandSkeletalActions;
+
+	UPROPERTY(Replicated, ReplicatedUsing = OnRep_SkeletalTransformLeft)
+		FBPOpenVRActionInfo LeftHandRep;
+
+	UPROPERTY(Replicated, ReplicatedUsing = OnRep_SkeletalTransformRight)
+		FBPOpenVRActionInfo RightHandRep;
 
 	// This one specifically sends out the new relative location for a retain secondary grip
 	UFUNCTION(Unreliable, Server, WithValidation)
 		void Server_SendSkeletalTransforms(const FBPOpenVRActionInfo &ActionInfo);
 
 	UFUNCTION()
-		virtual void OnRep_SkeletalTransforms()
+	virtual void OnRep_SkeletalTransformLeft()
 	{
-		
-		//UOpenInputFunctionLibrary::DecompressSkeletalData(HandSkeletalAction, GetWorld());
+		for (int i = 0; i < HandSkeletalActions.Num(); i++)
+		{
+			if (HandSkeletalActions[i].SkeletalData.TargetHand == LeftHandRep.SkeletalData.TargetHand)
+			{
+				HandSkeletalActions[i].CopyReplicated(LeftHandRep);
+				break;
+			}
+		}
+	}
 
-		// Convert to skeletal data from compressed here
-		//ReplicatedControllerTransform.Unpack();
+	UFUNCTION()
+	virtual void OnRep_SkeletalTransformRight()
+	{
+		for (int i = 0; i < HandSkeletalActions.Num(); i++)
+		{
+			if (HandSkeletalActions[i].SkeletalData.TargetHand == RightHandRep.SkeletalData.TargetHand)
+			{
+				HandSkeletalActions[i].CopyReplicated(RightHandRep);
+				break;
+			}
+		}
 	}
 
 	UPROPERTY(EditAnywhere, Category = SkeletalData)
@@ -330,6 +353,37 @@ public:
 
 		OwningMesh = Cast<UOpenInputSkeletalMeshComponent>(GetOwningComponent());
 
+	}
+
+	UFUNCTION(BlueprintCallable, Category = "BoneMappings")
+	void InitializeCustomBoneMapping(UPARAM(ref) FBPSkeletalMappingData & SkeletalMappingData)
+	{
+		USkeleton* AssetSkeleton = this->CurrentSkeleton;//RequiredBones.GetSkeletonAsset();
+
+		if (AssetSkeleton)
+		{
+			FBoneContainer &RequiredBones = this->GetRequiredBones();
+			for (FBPOpenVRSkeletalPair& BonePair : SkeletalMappingData.BonePairs)
+			{
+				// Fill in the bone name for the reference
+				BonePair.ReferenceToConstruct.BoneName = BonePair.BoneToTarget;
+
+				// Init the reference
+				BonePair.ReferenceToConstruct.Initialize(AssetSkeleton);
+				BonePair.ReferenceToConstruct.CachedCompactPoseIndex = BonePair.ReferenceToConstruct.GetCompactPoseIndex(RequiredBones);
+
+				if ((BonePair.ReferenceToConstruct.CachedCompactPoseIndex != INDEX_NONE))
+				{
+					// Get our parent bones index
+					BonePair.ParentReference = RequiredBones.GetParentBoneIndex(BonePair.ReferenceToConstruct.CachedCompactPoseIndex);
+				}
+			}
+
+			SkeletalMappingData.bInitialized = true;
+			return;
+		}
+
+		SkeletalMappingData.bInitialized = false;
 	}
 
 

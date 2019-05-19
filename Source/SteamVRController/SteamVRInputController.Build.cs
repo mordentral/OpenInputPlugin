@@ -30,7 +30,8 @@ public class SteamVRInputController : ModuleRules
 			"HeadMountedDisplay",
             "SteamVR",
             "Json",
-            "JsonUtilities"
+            "JsonUtilities",
+            "SteamVRController"
         });
 
         if (Target.bBuildEditor == true)
