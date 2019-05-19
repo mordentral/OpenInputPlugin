@@ -25,8 +25,8 @@
 
 namespace OpenInputFunctionLibraryStatics
 {
-	const FString LeftHand_SkeletalActionName("/actions/main/in/lefthand_skeleton");
-	const FString RightHand_SkeletalActionName("/actions/main/in/righthand_skeleton");
+	const FString LeftHand_SkeletalActionName("/actions/main/in/skeletonleft");
+	const FString RightHand_SkeletalActionName("/actions/main/in/skeletonright");
 }
 
 // Holds the action handle in a BP friendly form
@@ -135,7 +135,42 @@ public:
 	// Not a static array because it is BP accessible
 	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = Default)
 		TArray<float> PoseFingerSplays;
+
+	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+	{
+		bOutSuccess = true;
+
+		int NumFingers = PoseFingerCurls.Num();
+		int NumSplays = PoseFingerSplays.Num();
+
+		Ar << NumFingers;
+		Ar << NumSplays;
+
+		// If ever truly cross platform we would need to replicate the qty instead
+		for (int i = 0; i < NumFingers; i++)
+		{
+			bOutSuccess &= WriteFixedCompressedFloat<1, 16>(PoseFingerCurls[i], Ar);
+		}
+
+		// If ever truly cross platform we would need to replicate the qty instead
+		for (int i = 0; i < NumSplays; i++)
+		{
+			bOutSuccess &= WriteFixedCompressedFloat<1, 16>(PoseFingerSplays[i], Ar);
+		}
+
+		return bOutSuccess;
+	}
 };
+
+template<>
+struct TStructOpsTypeTraits< FBPOpenVRGesturePoseData > : public TStructOpsTypeTraitsBase2<FBPOpenVRGesturePoseData>
+{
+	enum
+	{
+		WithNetSerializer = true
+	};
+};
+
 
 UENUM(BlueprintType)
 enum class EVRActionHand : uint8
@@ -187,7 +222,7 @@ struct OPENINPUTPLUGIN_API FBPOpenVRActionInfo
 	GENERATED_BODY()
 public:
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Default)
+	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 		bool bGetSkeletalTransforms_WithController;
 
 	// Optional action name, if you are not using the default manifest generation then you can
@@ -206,8 +241,11 @@ public:
 	UPROPERTY(BlueprintReadOnly, NotReplicated, Transient, Category = Default)
 		FBPOpenVRGesturePoseData PoseFingerData;
 
-	UPROPERTY(BlueprintReadOnly, NotReplicated, Transient, Category = Default)
-		TArray<FTransform> OldSkeletalTransforms;
+	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
+		bool bOnlyReplicateFingerCurlsAndSplays;
+
+	//UPROPERTY(BlueprintReadOnly, NotReplicated, Transient, Category = Default)
+		//TArray<FTransform> OldSkeletalTransforms;
 
 	UPROPERTY(BlueprintReadOnly, NotReplicated, Transient, Category = Default)
 		bool bHasValidData;
@@ -230,6 +268,7 @@ public:
 	FBPOpenVRActionInfo()
 	{
 		ActionHandleContainer.ActionHandle = vr::k_ulInvalidActionHandle;
+		bOnlyReplicateFingerCurlsAndSplays = false;
 		bHasValidData = false;
 		CompressedSize = 0;
 		BoneCount = 0;
@@ -239,13 +278,81 @@ public:
 		LastHandGesture = NAME_None;
 	}
 
+	void CopyReplicated(FBPOpenVRActionInfo & Other)
+	{
+		SkeletalData.TargetHand = Other.SkeletalData.TargetHand;
+		bOnlyReplicateFingerCurlsAndSplays = Other.bOnlyReplicateFingerCurlsAndSplays;
+
+		if (Other.bOnlyReplicateFingerCurlsAndSplays)
+		{
+			// Instead of doing this, we likely need to lerp but this is for testing
+			PoseFingerData = Other.PoseFingerData;
+		}
+		else
+		{
+			SkeletalData.bAllowDeformingMesh = Other.SkeletalData.bAllowDeformingMesh;
+
+			// Instead of doing this, we likely need to lerp but this is for testing
+			SkeletalData.SkeletalTransforms = Other.SkeletalData.SkeletalTransforms;
+		}
+	}
+
 	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
 	{
 		bOutSuccess = true;
 
 		//Ar << CompressedSize;
-		Ar << BoneCount;
-		Ar << CompressedTransforms;
+		//Ar << BoneCount;
+		//Ar << CompressedTransforms;
+
+		Ar.SerializeBits(&SkeletalData.TargetHand, 1);
+		Ar.SerializeBits(&bOnlyReplicateFingerCurlsAndSplays, 1);
+
+		if (bOnlyReplicateFingerCurlsAndSplays)
+		{
+			PoseFingerData.NetSerialize(Ar, Map, bOutSuccess);
+		}
+		else
+		{
+			//Ar.SerializeBits(SkeletalTrackingLevel, 2);
+			Ar.SerializeBits(&SkeletalData.bAllowDeformingMesh, 1);
+
+			uint8 TransformCount = SkeletalData.SkeletalTransforms.Num();
+
+			Ar << TransformCount;
+
+			if (Ar.IsLoading())
+			{
+				SkeletalData.SkeletalTransforms.Empty(TransformCount);
+			}
+
+			FVector Position = FVector::ZeroVector;
+			FRotator Rot = FRotator::ZeroRotator;
+
+			for (int i = 0; i < TransformCount; i++)
+			{
+				if (Ar.IsSaving())
+				{
+					if (SkeletalData.bAllowDeformingMesh)
+						Position = SkeletalData.SkeletalTransforms[i].GetLocation();
+
+					Rot = SkeletalData.SkeletalTransforms[i].Rotator();
+				}
+
+				if(SkeletalData.bAllowDeformingMesh)
+					bOutSuccess &= SerializePackedVector<100, 22>(Position, Ar);
+
+				Rot.SerializeCompressedShort(Ar);
+
+				if (Ar.IsLoading())
+				{
+					if (SkeletalData.bAllowDeformingMesh)
+						SkeletalData.SkeletalTransforms.Add(FTransform(Rot, Position));
+					else
+						SkeletalData.SkeletalTransforms.Add(FTransform(Rot));
+				}
+			}
+		}
 
 		return bOutSuccess;
 	}
@@ -364,10 +471,10 @@ public:
 		if (InputError != vr::EVRInputError::VRInputError_None)
 			return false;
 
-		if (Action.SkeletalData.SkeletalTransforms.Num() > 0)
+		/*if (Action.SkeletalData.SkeletalTransforms.Num() > 0)
 		{
 			Action.OldSkeletalTransforms = Action.SkeletalData.SkeletalTransforms;
-		}
+		}*/
 
 		if (Action.SkeletalData.SkeletalTransforms.Num() != Action.BoneCount)
 		{
@@ -529,10 +636,10 @@ public:
 		if (InputError != vr::EVRInputError::VRInputError_None)
 			return false;
 
-		if (Action.SkeletalData.SkeletalTransforms.Num() > 0)
+		/*if (Action.SkeletalData.SkeletalTransforms.Num() > 0)
 		{
 			Action.OldSkeletalTransforms = Action.SkeletalData.SkeletalTransforms;
-		}
+		}*/
 
 		if (Action.SkeletalData.SkeletalTransforms.Num() != Action.BoneCount)
 		{
@@ -614,10 +721,10 @@ public:
 		if (InputError != vr::EVRInputError::VRInputError_None)
 			return false;
 
-		if (BlankActionToFill.SkeletalData.SkeletalTransforms.Num() > 0)
+		/*if (BlankActionToFill.SkeletalData.SkeletalTransforms.Num() > 0)
 		{
 			BlankActionToFill.OldSkeletalTransforms = BlankActionToFill.SkeletalData.SkeletalTransforms;
-		}
+		}*/
 
 		if (BlankActionToFill.SkeletalData.SkeletalTransforms.Num() != BlankActionToFill.BoneCount)
 		{

@@ -111,6 +111,7 @@ public:
 		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Wrist, FString::Printf(TEXT("wrist_%s"), HandDelimiter)));
 
 
+
 		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Thumb0, FString::Printf(TEXT("finger_thumb_0_%s"), HandDelimiter)));
 		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Thumb1, FString::Printf(TEXT("finger_thumb_1_%s"), HandDelimiter)));
 		BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Thumb2, FString::Printf(TEXT("finger_thumb_2_%s"), HandDelimiter)));

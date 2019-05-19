@@ -20,6 +20,9 @@
 #include "HAL/FileManagerGeneric.h"
 #include "Modules/ModuleManager.h"
 
+// To remove the default controller
+#include "ISteamVRControllerPlugin.h"
+
 #if WITH_EDITOR
 #include "Editor.h"
 #endif
@@ -61,14 +64,6 @@ DEFINE_LOG_CATEGORY_STATIC(LogSteamVRInputController, Log, All);
 // Gamepad thresholds
 //
 #define TOUCHPAD_DEADZONE  0.0f
-
-static TAutoConsoleVariable<int32> CVarEnableSteamVRInputController(
-	TEXT("vr.SteamVR.EnableSteamVRInputController"),
-	0,
-	TEXT("Enable valves input controller that overrides legacy input.\n")
-	TEXT(" 0: use the engines default input mapping (default), will also be default if vr.SteamVR.EnableVRInput is enabled\n")
-	TEXT(" 1: use the valve input controller. You will have to define input bindings for the controllers you want to support."),
-	ECVF_ReadOnly);
 
 struct FActionPath
 {
@@ -317,26 +312,21 @@ public:
 	{
 #if STEAMVRCONTROLLER_SUPPORTED_PLATFORMS
 		static const auto CVar = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("vr.SteamVR.EnableVRInput"));
+	
+		// Defer to Engine SteamVRController if it is enabled and legacy mode is active
+		// We already unload ourselves if that was the case
+		FMemory::Memzero(ControllerStates, sizeof(ControllerStates));
+		NumControllersMapped = 0;
+		NumTrackersMapped = 0;
 
-		// Defer to Engine SteamVRController if it is enabled, also only enable if our specific cvar is enabled
-		static const auto CVarSteamController = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("vr.SteamVR.EnableSteamVRInputController"));
-		bEnableVRInput = (CVar->GetValueOnGameThread() == 0 && CVarSteamController->GetValueOnGameThread() != 0) ? true : false;
+		InitialButtonRepeatDelay = 0.2f;
+		ButtonRepeatDelay = 0.1f;
 
-		if (bEnableVRInput)
-		{
-			FMemory::Memzero(ControllerStates, sizeof(ControllerStates));
-			NumControllersMapped = 0;
-			NumTrackersMapped = 0;
+		InitControllerMappings();
+		InitOpenVRControllerKeys();
+		BuildActionManifest();
 
-			InitialButtonRepeatDelay = 0.2f;
-			ButtonRepeatDelay = 0.1f;
-
-			InitControllerMappings();
-			InitOpenVRControllerKeys();
-			BuildActionManifest();
-
-			IModularFeatures::Get().RegisterModularFeature(GetModularFeatureName(), this);
-		}
+		IModularFeatures::Get().RegisterModularFeature(GetModularFeatureName(), this);
 #endif // STEAMVRINPUT_SUPPORTED_PLATFORMS
 	}
 
@@ -365,38 +355,33 @@ public:
 
 	void InitOpenVRControllerKeys()
 	{
-		if (bEnableVRInput)
-		{
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_A_Touch, LOCTEXT("OpenVR_Left_A_Touch", "OpenVRInput (L) A Touch"), FKeyDetails::GamepadKey));
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_A_Touch, LOCTEXT("OpenVRInput_Right_A_Touch", "OpenVRInput (R) A Touch"), FKeyDetails::GamepadKey));
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_B_Touch, LOCTEXT("OpenVRInput_Left_B_Touch", "OpenVRInput (L) B Touch"), FKeyDetails::GamepadKey));
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_B_Touch, LOCTEXT("OpenVRInput_Right_B_Touch", "OpenVRInput (R) B Touch"), FKeyDetails::GamepadKey));
-									  
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Trigger_Touch, LOCTEXT("OpenVRInput_L_Trigger_Touch", "OpenVRInput (L) Trigger Touch"), FKeyDetails::GamepadKey));
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Trigger_Touch, LOCTEXT("OpenVRInput_R_Trigger_Touch", "OpenVRInput (R) Trigger Touch"), FKeyDetails::GamepadKey));
-									  
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Thumbstick_Touch, LOCTEXT("OpenVRInput_L_Thumbstick_Touch", "OpenVRInput (L) Thumbstick Touch"), FKeyDetails::GamepadKey));
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Thumbstick_Touch, LOCTEXT("OpenVRInput_R_Thumbstick_Touch", "OpenVRInput (R) Thumbstick Touch"), FKeyDetails::GamepadKey));
-									  
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Trackpad_Touch, LOCTEXT("OpenVRInput_L_Trackpad_Touch", "OpenVRInput (L) Trackpad Touch"), FKeyDetails::GamepadKey));
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Trackpad_Touch, LOCTEXT("OpenVRInput_R_Trackpad_Touch", "OpenVRInput (R) Trackpad Touch"), FKeyDetails::GamepadKey));
-									  
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Trackpad_X, LOCTEXT("OpenVRInput_Left_Trackpad_X", "OpenVRInput (L) Trackpad X"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Trackpad_X, LOCTEXT("OpenVRInput_Right_Trackpad_X", "OpenVRInput (R) Trackpad X"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Trackpad_Y, LOCTEXT("OpenVRInput_Left_Trackpad_Y", "OpenVRInput (L) Trackpad Y"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Trackpad_Y, LOCTEXT("OpenVRInput_Right_Trackpad_Y", "OpenVRInput (R) Trackpad Y"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));
+		EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_A_Touch, LOCTEXT("OpenVR_Left_A_Touch", "OpenVRInput (L) A Touch"), FKeyDetails::GamepadKey));
+		EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_A_Touch, LOCTEXT("OpenVRInput_Right_A_Touch", "OpenVRInput (R) A Touch"), FKeyDetails::GamepadKey));
+		EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_B_Touch, LOCTEXT("OpenVRInput_Left_B_Touch", "OpenVRInput (L) B Touch"), FKeyDetails::GamepadKey));
+		EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_B_Touch, LOCTEXT("OpenVRInput_Right_B_Touch", "OpenVRInput (R) B Touch"), FKeyDetails::GamepadKey));
 
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Pinch, LOCTEXT("OpenVRInput_Left_Pinch", "OpenVRInput (L) Pinch"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));
-			EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Pinch, LOCTEXT("OpenVRInput_Right_Pinch", "OpenVRInput (R) Pinch"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));
-		}
+		EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Trigger_Touch, LOCTEXT("OpenVRInput_L_Trigger_Touch", "OpenVRInput (L) Trigger Touch"), FKeyDetails::GamepadKey));
+		EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Trigger_Touch, LOCTEXT("OpenVRInput_R_Trigger_Touch", "OpenVRInput (R) Trigger Touch"), FKeyDetails::GamepadKey));
+
+		EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Thumbstick_Touch, LOCTEXT("OpenVRInput_L_Thumbstick_Touch", "OpenVRInput (L) Thumbstick Touch"), FKeyDetails::GamepadKey));
+		EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Thumbstick_Touch, LOCTEXT("OpenVRInput_R_Thumbstick_Touch", "OpenVRInput (R) Thumbstick Touch"), FKeyDetails::GamepadKey));
+
+		EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Trackpad_Touch, LOCTEXT("OpenVRInput_L_Trackpad_Touch", "OpenVRInput (L) Trackpad Touch"), FKeyDetails::GamepadKey));
+		EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Trackpad_Touch, LOCTEXT("OpenVRInput_R_Trackpad_Touch", "OpenVRInput (R) Trackpad Touch"), FKeyDetails::GamepadKey));
+
+		EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Trackpad_X, LOCTEXT("OpenVRInput_Left_Trackpad_X", "OpenVRInput (L) Trackpad X"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));
+		EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Trackpad_X, LOCTEXT("OpenVRInput_Right_Trackpad_X", "OpenVRInput (R) Trackpad X"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));
+		EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Trackpad_Y, LOCTEXT("OpenVRInput_Left_Trackpad_Y", "OpenVRInput (L) Trackpad Y"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));
+		EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Trackpad_Y, LOCTEXT("OpenVRInput_Right_Trackpad_Y", "OpenVRInput (R) Trackpad Y"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));
+
+		EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Left_Pinch, LOCTEXT("OpenVRInput_Left_Pinch", "OpenVRInput (L) Pinch"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));
+		EKeys::AddKey(FKeyDetails(OpenVRMotionControllerInput::OpenVRInput_Right_Pinch, LOCTEXT("OpenVRInput_Right_Pinch", "OpenVRInput (R) Pinch"), FKeyDetails::GamepadKey | FKeyDetails::FloatAxis));
 	}
 #endif // STEAMVRCONTROLLER_SUPPORTED_PLATFORMS
 
 	virtual ~FSteamVRInputController()
 	{
 #if STEAMVRCONTROLLER_SUPPORTED_PLATFORMS
-		if (!bEnableVRInput)
-			return;
 #if WITH_EDITOR
 		if (ActionMappingsChangedHandle.IsValid())
 		{
@@ -410,9 +395,6 @@ public:
 
 	virtual void Tick(float DeltaTime) override
 	{
-		if (!bEnableVRInput)
-			return;
-
 #if STEAMVRCONTROLLER_SUPPORTED_PLATFORMS
 		vr::IVRSystem* VRSystem = GetVRSystem();
 
@@ -427,10 +409,7 @@ public:
 	virtual void SendControllerEvents() override
 	{
 #if STEAMVRCONTROLLER_SUPPORTED_PLATFORMS
-		if (bEnableVRInput)
-		{
 			SendActionInputEvents();
-		}
 
 		// Legacy support removed on purpose as new Steam In
 #endif
@@ -546,8 +525,6 @@ public:
 	void SetChannelValue(int32 UnrealControllerId, FForceFeedbackChannelType ChannelType, float Value) override
 	{
 #if STEAMVRCONTROLLER_SUPPORTED_PLATFORMS
-		if (!bEnableVRInput)
-			return;
 
 		// Skip unless this is the left or right large channel, which we consider to be the only KnucklesVRController feedback channel
 		if (ChannelType != FForceFeedbackChannelType::LEFT_LARGE && ChannelType != FForceFeedbackChannelType::RIGHT_LARGE)
@@ -572,8 +549,6 @@ public:
 	void SetChannelValues(int32 UnrealControllerId, const FForceFeedbackValues& Values) override
 	{
 #if STEAMVRCONTROLLER_SUPPORTED_PLATFORMS
-		if (!bEnableVRInput)
-			return;
 
 		const int32 LeftControllerIndex = UnrealControllerIdToControllerIndex(UnrealControllerId, EControllerHand::Left);
 		if ((LeftControllerIndex >= 0) && (LeftControllerIndex < MaxControllers))
@@ -603,8 +578,6 @@ public:
 	virtual void SetHapticFeedbackValues(int32 UnrealControllerId, int32 Hand, const FHapticFeedbackValues& Values) override
 	{
 #if STEAMVRCONTROLLER_SUPPORTED_PLATFORMS
-		if (!bEnableVRInput)
-			return;
 
 		if (Hand != (int32)EControllerHand::Left && Hand != (int32)EControllerHand::Right)
 		{
@@ -708,8 +681,6 @@ public:
 
 	virtual bool IsGamepadAttached() const override
 	{
-		if (!bEnableVRInput)
-			return false;
 
 		FSteamVRHMD* SteamVRSystem = GetSteamVRHMD();
 
@@ -1171,7 +1142,7 @@ private:
 	{
 		vr::IVRInput* VRInput;
 
-		if (bEnableVRInput && (VRInput = vr::VRInput()) != nullptr)
+		if ((VRInput = vr::VRInput()) != nullptr)
 		{
 			// Input Key Mappings - UE uses Action to Multiple Inputs, this needs to be reorganized to match 
 			// Valve's which is Input to multiple actions
@@ -1368,8 +1339,8 @@ private:
 				// Add left and right hand skeletal action entries
 				// We store the skeletal action name in the actionX field
 				// Skeletal actions don't require polling anyway
-				Actions.Add(FSteamVRAction(FString("/actions/main/in/righthand_skeleton"), FName(TEXT("Hand Skeleton (Right)")), FName(TEXT("/skeleton/hand/right"))));
-				Actions.Add(FSteamVRAction(FString("/actions/main/in/lefthand_skeleton"), FName(TEXT("Hand Skeleton (Left)")), FName(TEXT("/skeleton/hand/left"))));
+				Actions.Add(FSteamVRAction(FString("/actions/main/in/skeletonright"), FName(TEXT("Hand Skeleton (Right)")), FName(TEXT("/skeleton/hand/right"))));
+				Actions.Add(FSteamVRAction(FString("/actions/main/in/skeletonleft"), FName(TEXT("Hand Skeleton (Left)")), FName(TEXT("/skeleton/hand/left"))));
 
 
 				// Open console
@@ -1606,7 +1577,7 @@ private:
 #endif // STEAMVRCONTROLLER_SUPPORTED_PLATFORMS
 
 	/** Whether the VRInput API is enabled or not */
-	bool bEnableVRInput;
+	//bool bEnableVRInput;
 
 	/** handler to send all messages to */
 	TSharedRef<FGenericApplicationMessageHandler> MessageHandler;
@@ -1621,9 +1592,70 @@ class FSteamVRInputControllerPlugin : public ISteamVRInputPlugin
 {
 	virtual TSharedPtr< class IInputDevice > CreateInputDevice(const TSharedRef< FGenericApplicationMessageHandler >& InMessageHandler) override
 	{
+
+		// If the official SteamVRInputDevice is loaded then lets unload, not make an input device, and fail out
+		// I have to do it here because they set their module to load as late as possible
+		// Also if the vr input mode isn't the new beta input then we unload and let the default engine plugin manage it
+		FModuleManager& ModuleManager = FModuleManager::Get();
+		if (ModuleManager.IsModuleLoaded(FName("SteamVRInputDevice")))
+		{
+
+			ISteamVRInputPlugin* OurController = ModuleManager.GetModulePtr<ISteamVRInputPlugin>(FName("SteamVRInputController"));
+			if (OurController != nullptr)
+			{
+				IModularFeatures::Get().UnregisterModularFeature(GetModularFeatureName(), this);
+				OurController->ShutdownModule();
+			}
+
+
+			return TSharedPtr< class IInputDevice >(nullptr);
+		}
+
 		return TSharedPtr< class IInputDevice >(new FSteamVRInputController(InMessageHandler));
 	}
+
+	virtual void StartupModule() override
+	{
+		static const auto CVar = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("vr.SteamVR.EnableVRInput"));
+		bool bTakeOverControl = (CVar->GetValueOnGameThread() != 0) ? true : false;
+
+		if (bTakeOverControl)
+		{
+			// We'll pre-unload the controller here, this covers when its just our module, AND when the official SteamVR one is present
+			FModuleManager& ModuleManager = FModuleManager::Get();
+			ISteamVRControllerPlugin* StockController = ModuleManager.GetModulePtr<ISteamVRControllerPlugin>(FName("SteamVRController"));
+
+			if (StockController != nullptr)
+			{
+				// Manually Unregister Module Feature instead of straight up unloading
+				IModularFeatures::Get().UnregisterModularFeature(GetModularFeatureName(), StockController);
+				StockController->ShutdownModule();
+				//ModuleManager.UnloadModule(FName("SteamVRController"));
+				StockController->~ISteamVRControllerPlugin();
+			}
+			else
+			{
+				// Unload UE4 Stock Engine SteamVRController Module (if present)
+				if (ModuleManager.UnloadModule(FName("SteamVRController")))
+				{
+					UE_LOG(LogTemp, Warning, TEXT("[SteamVR Input] Unloaded UE4 SteamVR Controller"));
+				}
+			}
+
+			IModularFeatures::Get().RegisterModularFeature(GetModularFeatureName(), this);
+		}
+		else
+		{
+			FModuleManager& ModuleManager = FModuleManager::Get();
+			ISteamVRInputPlugin* OurController = ModuleManager.GetModulePtr<ISteamVRInputPlugin>(FName("SteamVRInputController"));
+			if (OurController != nullptr)
+			{
+				OurController->ShutdownModule();
+			}
+		}
+	}
 };
+
 
 IMPLEMENT_MODULE(FSteamVRInputControllerPlugin, SteamVRInputController)
 #undef LOCTEXT_NAMESPACE //"SteamVRInputController"
