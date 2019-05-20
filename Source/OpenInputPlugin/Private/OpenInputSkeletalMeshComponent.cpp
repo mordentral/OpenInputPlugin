@@ -17,7 +17,7 @@ UOpenInputSkeletalMeshComponent::UOpenInputSkeletalMeshComponent(const FObjectIn
 	//PrimaryComponentTick.bCanEverTick = false;
 	//PrimaryComponentTick.bStartWithTickEnabled = false;
 
-	ReplicationRateForSkeletalAnimations = 60.f;
+	ReplicationRateForSkeletalAnimations = 20.f;
 	bReplicateSkeletalData = false;
 	bOffsetByControllerProfile = true;
 	SkeletalNetUpdateCount = 0.f;

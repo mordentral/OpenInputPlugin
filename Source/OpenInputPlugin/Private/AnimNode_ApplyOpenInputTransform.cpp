@@ -9,7 +9,6 @@
 #include "OpenInputSkeletalMeshComponent.h"
 #include "Runtime/Engine/Public/Animation/AnimInstanceProxy.h"
 #include "BoneControllers/AnimNode_SkeletalControlBase.h"
-
 	
 FAnimNode_ApplyOpenInputTransform::FAnimNode_ApplyOpenInputTransform()
 	: FAnimNode_SkeletalControlBase()
