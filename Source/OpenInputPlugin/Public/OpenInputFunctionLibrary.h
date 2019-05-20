@@ -623,7 +623,7 @@ public:
 		// We got the transforms normally for the local player as they don't have the artifacts, but we get the compressed ones for remote sending
 		if (bGetCompressedData)
 		{			
-			int32 MaxArraySize = (sizeof(vr::VRBoneTransform_t) * (Action.BoneCount + 2));
+			int32 MaxArraySize = ((sizeof(vr::VRBoneTransform_t) * Action.BoneCount) + 2);
 			TArray<uint8> TempBuffer;
 			TempBuffer.AddUninitialized(MaxArraySize);
 
@@ -690,7 +690,6 @@ public:
 		{
 			BlankActionToFill.ActionHandleContainer.ActionHandle = vr::k_ulInvalidActionHandle;
 			return false;
-
 		}
 
 		vr::InputSkeletalActionData_t SkeletalData;

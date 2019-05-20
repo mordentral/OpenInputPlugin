@@ -9,7 +9,6 @@
 #include "OpenInputSkeletalMeshComponent.h"
 #include "Runtime/Engine/Public/Animation/AnimInstanceProxy.h"
 #include "BoneControllers/AnimNode_SkeletalControlBase.h"
-
 	
 FAnimNode_ApplyOpenInputTransform::FAnimNode_ApplyOpenInputTransform()
 	: FAnimNode_SkeletalControlBase()
@@ -240,5 +239,5 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 
 bool FAnimNode_ApplyOpenInputTransform::IsValidToEvaluate(const USkeleton* Skeleton, const FBoneContainer& RequiredBones)
 {
-	return(/*MappedBonePairs.bInitialized && */MappedBonePairs.BonePairs.Num());
+	return(MappedBonePairs.bInitialized && MappedBonePairs.BonePairs.Num());
 }
