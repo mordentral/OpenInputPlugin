@@ -19,64 +19,6 @@
 
 #include "OpenInputSkeletalMeshComponent.generated.h"
 
-/*
-USTRUCT(BlueprintType, Category = "OpenInputLibrary|SkeletalTransform")
-struct FSkeletalTransform_NetQuantize : public FTransform_NetQuantize
-{
-	GENERATED_USTRUCT_BODY()
-public:
-
-	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
-	{
-		bOutSuccess = true;
-
-		FVector rTranslation;
-		//FVector rScale3D;
-		//FQuat rRotation;
-		FRotator rRotation;
-
-		uint16 ShortPitch = 0;
-		uint16 ShortYaw = 0;
-		uint16 ShortRoll = 0;
-
-		if (Ar.IsSaving())
-		{
-			// Because transforms can be vectorized or not, need to use the inline retrievers
-			rTranslation = this->GetTranslation();
-			//rScale3D = this->GetScale3D();
-			rRotation = this->Rotator();//this->GetRotation();
-
-				// Translation set to 2 decimal precision
-				bOutSuccess &= SerializePackedVector<100, 12>(rTranslation, Ar);
-
-				// Rotation converted to FRotator and short compressed, see below for conversion reason
-				// FRotator already serializes compressed short by default but I can save a func call here
-				rRotation.SerializeCompressedShort(Ar);
-		}
-		else // If loading
-		{
-
-			bOutSuccess &= SerializePackedVector<100, 12>(rTranslation, Ar);
-			rRotation.SerializeCompressedShort(Ar);
-
-			// Set it
-			this->SetComponents(rRotation.Quaternion(), rTranslation, FVector(1.f));
-		}
-
-		return bOutSuccess;
-	}
-};
-
-template<>
-struct TStructOpsTypeTraits< FSkeletalTransform_NetQuantize > : public TStructOpsTypeTraitsBase2<FSkeletalTransform_NetQuantize>
-{
-	enum
-	{
-		WithNetSerializer = true
-	};
-};
-*/
-
 USTRUCT(BlueprintType, Category = "VRGestures")
 struct OPENINPUTPLUGIN_API FOpenInputGestureFingerPosition
 {
@@ -262,24 +204,24 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SkeletalData|Actions")
 		TArray<FBPOpenVRActionInfo> HandSkeletalActions;
 
-	UPROPERTY(Replicated, ReplicatedUsing = OnRep_SkeletalTransformLeft)
-		FBPOpenVRActionInfo LeftHandRep;
+	UPROPERTY(Replicated, Transient, ReplicatedUsing = OnRep_SkeletalTransformLeft)
+		FBPSkeletalRepContainer LeftHandRep;
 
-	UPROPERTY(Replicated, ReplicatedUsing = OnRep_SkeletalTransformRight)
-		FBPOpenVRActionInfo RightHandRep;
+	UPROPERTY(Replicated, Transient, ReplicatedUsing = OnRep_SkeletalTransformRight)
+		FBPSkeletalRepContainer RightHandRep;
 
 	// This one specifically sends out the new relative location for a retain secondary grip
 	UFUNCTION(Unreliable, Server, WithValidation)
-		void Server_SendSkeletalTransforms(const FBPOpenVRActionInfo &ActionInfo);
+		void Server_SendSkeletalTransforms(const FBPSkeletalRepContainer& SkeletalInfo);
 
 	UFUNCTION()
 	virtual void OnRep_SkeletalTransformLeft()
 	{
 		for (int i = 0; i < HandSkeletalActions.Num(); i++)
 		{
-			if (HandSkeletalActions[i].SkeletalData.TargetHand == LeftHandRep.SkeletalData.TargetHand)
+			if (HandSkeletalActions[i].SkeletalData.TargetHand == LeftHandRep.TargetHand)
 			{
-				HandSkeletalActions[i].CopyReplicated(LeftHandRep);
+				FBPSkeletalRepContainer::CopyReplicatedTo(LeftHandRep, HandSkeletalActions[i]);
 				break;
 			}
 		}
@@ -290,9 +232,9 @@ public:
 	{
 		for (int i = 0; i < HandSkeletalActions.Num(); i++)
 		{
-			if (HandSkeletalActions[i].SkeletalData.TargetHand == RightHandRep.SkeletalData.TargetHand)
+			if (HandSkeletalActions[i].SkeletalData.TargetHand == RightHandRep.TargetHand)
 			{
-				HandSkeletalActions[i].CopyReplicated(RightHandRep);
+				FBPSkeletalRepContainer::CopyReplicatedTo(RightHandRep, HandSkeletalActions[i]);
 				break;
 			}
 		}

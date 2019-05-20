@@ -135,42 +135,7 @@ public:
 	// Not a static array because it is BP accessible
 	UPROPERTY(BlueprintReadOnly, NotReplicated, Category = Default)
 		TArray<float> PoseFingerSplays;
-
-	bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
-	{
-		bOutSuccess = true;
-
-		int NumFingers = PoseFingerCurls.Num();
-		int NumSplays = PoseFingerSplays.Num();
-
-		Ar << NumFingers;
-		Ar << NumSplays;
-
-		// If ever truly cross platform we would need to replicate the qty instead
-		for (int i = 0; i < NumFingers; i++)
-		{
-			bOutSuccess &= WriteFixedCompressedFloat<1, 16>(PoseFingerCurls[i], Ar);
-		}
-
-		// If ever truly cross platform we would need to replicate the qty instead
-		for (int i = 0; i < NumSplays; i++)
-		{
-			bOutSuccess &= WriteFixedCompressedFloat<1, 16>(PoseFingerSplays[i], Ar);
-		}
-
-		return bOutSuccess;
-	}
 };
-
-template<>
-struct TStructOpsTypeTraits< FBPOpenVRGesturePoseData > : public TStructOpsTypeTraitsBase2<FBPOpenVRGesturePoseData>
-{
-	enum
-	{
-		WithNetSerializer = true
-	};
-};
-
 
 UENUM(BlueprintType)
 enum class EVRActionHand : uint8
@@ -216,6 +181,15 @@ public:
 	}
 };
 
+UENUM()
+enum class EVRSkeletalReplicationType : uint8
+{
+	Rep_CurlOnly = 0,
+	Rep_CurlAndSplay,
+	Rep_HardTransforms,
+	Rep_SteamVRCompressedTransforms
+};
+
 USTRUCT(BlueprintType, Category = "VRExpansionFunctions|SteamVR|HandSkeleton")
 struct OPENINPUTPLUGIN_API FBPOpenVRActionInfo
 {
@@ -242,7 +216,7 @@ public:
 		FBPOpenVRGesturePoseData PoseFingerData;
 
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
-		bool bOnlyReplicateFingerCurlsAndSplays;
+		EVRSkeletalReplicationType ReplicationType;
 
 	//UPROPERTY(BlueprintReadOnly, NotReplicated, Transient, Category = Default)
 		//TArray<FTransform> OldSkeletalTransforms;
@@ -250,7 +224,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, NotReplicated, Transient, Category = Default)
 		bool bHasValidData;
 
-	// The level of trackin that the OpenInputdevice has (only valid value if this bHasValidData)
+	// The level of tracking that the OpenInputdevice has (only valid value if this bHasValidData)
 	UPROPERTY(BlueprintReadOnly, NotReplicated, Transient, Category = Default)
 		EVROpenInputSkeletalTrackingLevel SkeletalTrackingLevel;
 
@@ -268,7 +242,7 @@ public:
 	FBPOpenVRActionInfo()
 	{
 		ActionHandleContainer.ActionHandle = vr::k_ulInvalidActionHandle;
-		bOnlyReplicateFingerCurlsAndSplays = false;
+		ReplicationType = EVRSkeletalReplicationType::Rep_SteamVRCompressedTransforms;
 		bHasValidData = false;
 		CompressedSize = 0;
 		BoneCount = 0;
@@ -277,23 +251,152 @@ public:
 		LastHandGestureIndex = INDEX_NONE;
 		LastHandGesture = NAME_None;
 	}
+};
 
-	void CopyReplicated(FBPOpenVRActionInfo & Other)
+USTRUCT(BlueprintType, Category = "VRExpansionFunctions|SteamVR|HandSkeleton")
+struct OPENINPUTPLUGIN_API FBPSkeletalRepContainer
+{
+	GENERATED_BODY()
+public:
+
+	UPROPERTY(Transient)
+		EVRActionHand TargetHand;
+
+	UPROPERTY(Transient)
+		EVRSkeletalReplicationType ReplicationType;
+
+	UPROPERTY(Transient)
+		FBPOpenVRGesturePoseData PoseFingerData;
+
+	UPROPERTY(Transient)
+		bool bAllowDeformingMesh;
+
+	UPROPERTY(Transient)
+		TArray<FTransform> SkeletalTransforms;
+
+	UPROPERTY(Transient)
+		TArray<uint8> CompressedTransforms;
+
+	void CopyForReplication(FBPOpenVRActionInfo& Other)
 	{
-		SkeletalData.TargetHand = Other.SkeletalData.TargetHand;
-		bOnlyReplicateFingerCurlsAndSplays = Other.bOnlyReplicateFingerCurlsAndSplays;
+		TargetHand = Other.SkeletalData.TargetHand;
+		ReplicationType = Other.ReplicationType;
 
-		if (Other.bOnlyReplicateFingerCurlsAndSplays)
+		switch (ReplicationType)
 		{
+		case EVRSkeletalReplicationType::Rep_CurlOnly:
+		case EVRSkeletalReplicationType::Rep_CurlAndSplay:
+		{
+			PoseFingerData = Other.PoseFingerData;	
+		}break;
+
+		case EVRSkeletalReplicationType::Rep_HardTransforms:
+		{
+			bAllowDeformingMesh = Other.SkeletalData.bAllowDeformingMesh;
+
 			// Instead of doing this, we likely need to lerp but this is for testing
-			PoseFingerData = Other.PoseFingerData;
+			//SkeletalTransforms = Other.SkeletalData.SkeletalTransforms;
+
+			if (SkeletalTransforms.Num() != (uint8)EVROpenInputBones::eBone_Count - 10)
+			{
+				SkeletalTransforms.Empty((uint8)EVROpenInputBones::eBone_Count - 10); // Minus bones we don't need
+				SkeletalTransforms.AddUninitialized((uint8)EVROpenInputBones::eBone_Count - 10);
+			}
+
+			SkeletalTransforms[0] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Root];
+			SkeletalTransforms[1] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Wrist];
+			SkeletalTransforms[2] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Thumb0];
+			SkeletalTransforms[3] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Thumb1];
+			SkeletalTransforms[4] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Thumb2];
+			SkeletalTransforms[5] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_IndexFinger0];
+			SkeletalTransforms[6] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_IndexFinger1];
+			SkeletalTransforms[7] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_IndexFinger2];
+			SkeletalTransforms[8] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_IndexFinger3];
+			SkeletalTransforms[9] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_MiddleFinger0];
+			SkeletalTransforms[10] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_MiddleFinger1];
+			SkeletalTransforms[11] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_MiddleFinger2];
+			SkeletalTransforms[12] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_MiddleFinger3];
+			SkeletalTransforms[13] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_RingFinger0];
+			SkeletalTransforms[14] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_RingFinger1];
+			SkeletalTransforms[15] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_RingFinger2];
+			SkeletalTransforms[16] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_RingFinger3];
+			SkeletalTransforms[17] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_PinkyFinger0];
+			SkeletalTransforms[18] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_PinkyFinger1];
+			SkeletalTransforms[19] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_PinkyFinger2];
+			SkeletalTransforms[20] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_PinkyFinger3];
+
+		}break;
+
+		case EVRSkeletalReplicationType::Rep_SteamVRCompressedTransforms:
+		{
+			CompressedTransforms = Other.CompressedTransforms;
+		}break;
 		}
-		else
+	}
+
+	static void CopyReplicatedTo(const FBPSkeletalRepContainer & Container, FBPOpenVRActionInfo& Other)
+	{
+		switch (Container.ReplicationType)
 		{
-			SkeletalData.bAllowDeformingMesh = Other.SkeletalData.bAllowDeformingMesh;
+		case EVRSkeletalReplicationType::Rep_CurlOnly:
+		case EVRSkeletalReplicationType::Rep_CurlAndSplay:
+		{
+			Other.PoseFingerData = Container.PoseFingerData;
+		}break;
+
+		case EVRSkeletalReplicationType::Rep_HardTransforms:
+		{
+			Other.SkeletalData.bAllowDeformingMesh = Container.bAllowDeformingMesh;
 
 			// Instead of doing this, we likely need to lerp but this is for testing
-			SkeletalData.SkeletalTransforms = Other.SkeletalData.SkeletalTransforms;
+			//Other.SkeletalData.SkeletalTransforms = Container.SkeletalTransforms;
+			
+			if (Other.SkeletalData.SkeletalTransforms.Num() != (uint8)EVROpenInputBones::eBone_Count)
+			{
+				Other.SkeletalData.SkeletalTransforms.Empty((uint8)EVROpenInputBones::eBone_Count);
+				Other.SkeletalData.SkeletalTransforms.AddUninitialized((uint8)EVROpenInputBones::eBone_Count);
+			}
+
+ 			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Root] = Container.SkeletalTransforms[0];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Wrist] = Container.SkeletalTransforms[1];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Thumb0] = Container.SkeletalTransforms[2];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Thumb1] = Container.SkeletalTransforms[3];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Thumb2] = Container.SkeletalTransforms[4];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Thumb3] = FTransform::Identity;// Need to project this from last joint
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_IndexFinger0] = Container.SkeletalTransforms[5];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_IndexFinger1] = Container.SkeletalTransforms[6];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_IndexFinger2] = Container.SkeletalTransforms[7];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_IndexFinger3] = Container.SkeletalTransforms[8];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_IndexFinger4] = FTransform::Identity;// Need to project this from last joint
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_MiddleFinger0] = Container.SkeletalTransforms[9];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_MiddleFinger1] = Container.SkeletalTransforms[10];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_MiddleFinger2] = Container.SkeletalTransforms[11];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_MiddleFinger3] = Container.SkeletalTransforms[12];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_MiddleFinger4] = FTransform::Identity;// Need to project this from last joint
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_RingFinger0] = Container.SkeletalTransforms[13];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_RingFinger1] = Container.SkeletalTransforms[14];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_RingFinger2] = Container.SkeletalTransforms[15];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_RingFinger3] = Container.SkeletalTransforms[16];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_RingFinger4] = FTransform::Identity;// Need to project this from last joint
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_PinkyFinger0] = Container.SkeletalTransforms[17];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_PinkyFinger1] = Container.SkeletalTransforms[18];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_PinkyFinger2] = Container.SkeletalTransforms[19];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_PinkyFinger3] = Container.SkeletalTransforms[20];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_PinkyFinger4] = FTransform::Identity;// Need to project this from last joint
+
+			// These are copied from the 3rd joints as they use the same transform but a different root
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Aux_Thumb] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Thumb2];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Aux_IndexFinger] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_IndexFinger3];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Aux_MiddleFinger] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_MiddleFinger3];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Aux_RingFinger] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_RingFinger3];
+			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Aux_PinkyFinger] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_PinkyFinger3];
+
+		}break;
+
+		case EVRSkeletalReplicationType::Rep_SteamVRCompressedTransforms:
+		{
+			Other.CompressedTransforms = Container.CompressedTransforms;
+		}break;
 		}
 	}
 
@@ -301,29 +404,48 @@ public:
 	{
 		bOutSuccess = true;
 
-		//Ar << CompressedSize;
-		//Ar << BoneCount;
-		//Ar << CompressedTransforms;
+		Ar.SerializeBits(&TargetHand, 1);
+		Ar.SerializeBits(&ReplicationType, 2);
 
-		Ar.SerializeBits(&SkeletalData.TargetHand, 1);
-		Ar.SerializeBits(&bOnlyReplicateFingerCurlsAndSplays, 1);
-
-		if (bOnlyReplicateFingerCurlsAndSplays)
+		switch (ReplicationType)
 		{
-			PoseFingerData.NetSerialize(Ar, Map, bOutSuccess);
-		}
-		else
+		case EVRSkeletalReplicationType::Rep_CurlOnly:
+		case EVRSkeletalReplicationType::Rep_CurlAndSplay:
+		{
+			int NumFingers = PoseFingerData.PoseFingerCurls.Num();
+			Ar << NumFingers;
+
+			for (int i = 0; i < NumFingers; i++)
+			{
+				bOutSuccess &= WriteFixedCompressedFloat<1, 16>(PoseFingerData.PoseFingerCurls[i], Ar);
+			}
+
+			if (ReplicationType == EVRSkeletalReplicationType::Rep_CurlAndSplay)
+			{
+				int NumSplays = PoseFingerData.PoseFingerSplays.Num();
+				Ar << NumSplays;
+
+				for (int i = 0; i < NumSplays; i++)
+				{
+					bOutSuccess &= WriteFixedCompressedFloat<1, 16>(PoseFingerData.PoseFingerSplays[i], Ar);
+				}
+			}
+
+			//PoseFingerData.NetSerialize(Ar, Map, bOutSuccess);
+		}break;
+
+		case EVRSkeletalReplicationType::Rep_HardTransforms:
 		{
 			//Ar.SerializeBits(SkeletalTrackingLevel, 2);
-			Ar.SerializeBits(&SkeletalData.bAllowDeformingMesh, 1);
+			Ar.SerializeBits(&bAllowDeformingMesh, 1);
 
-			uint8 TransformCount = SkeletalData.SkeletalTransforms.Num();
+			uint8 TransformCount = SkeletalTransforms.Num();
 
 			Ar << TransformCount;
 
 			if (Ar.IsLoading())
 			{
-				SkeletalData.SkeletalTransforms.Empty(TransformCount);
+				SkeletalTransforms.Empty(TransformCount);
 			}
 
 			FVector Position = FVector::ZeroVector;
@@ -333,25 +455,32 @@ public:
 			{
 				if (Ar.IsSaving())
 				{
-					if (SkeletalData.bAllowDeformingMesh)
-						Position = SkeletalData.SkeletalTransforms[i].GetLocation();
+					if (bAllowDeformingMesh)
+						Position = SkeletalTransforms[i].GetLocation();
 
-					Rot = SkeletalData.SkeletalTransforms[i].Rotator();
+					Rot = SkeletalTransforms[i].Rotator();
 				}
 
-				if(SkeletalData.bAllowDeformingMesh)
-					bOutSuccess &= SerializePackedVector<100, 22>(Position, Ar);
+				if (bAllowDeformingMesh)
+					bOutSuccess &= SerializePackedVector<100, 12>(Position, Ar);
 
-				Rot.SerializeCompressedShort(Ar);
+				Rot.SerializeCompressed(Ar); // Short? 10 bit?
 
 				if (Ar.IsLoading())
 				{
-					if (SkeletalData.bAllowDeformingMesh)
-						SkeletalData.SkeletalTransforms.Add(FTransform(Rot, Position));
+					if (bAllowDeformingMesh)
+						SkeletalTransforms.Add(FTransform(Rot, Position));
 					else
-						SkeletalData.SkeletalTransforms.Add(FTransform(Rot));
+						SkeletalTransforms.Add(FTransform(Rot));
 				}
 			}
+		}break;
+
+		case EVRSkeletalReplicationType::Rep_SteamVRCompressedTransforms:
+		{
+			Ar << CompressedTransforms;
+		}break;
+		default:break;
 		}
 
 		return bOutSuccess;
@@ -359,7 +488,7 @@ public:
 };
 
 template<>
-struct TStructOpsTypeTraits< FBPOpenVRActionInfo > : public TStructOpsTypeTraitsBase2<FBPOpenVRActionInfo>
+struct TStructOpsTypeTraits< FBPSkeletalRepContainer > : public TStructOpsTypeTraitsBase2<FBPSkeletalRepContainer>
 {
 	enum
 	{
@@ -494,7 +623,7 @@ public:
 
 	// Checks if a specific OpenVR device is connected, index names are assumed, they may not be exact
 	UFUNCTION(BlueprintCallable, Category = "OpenInputFunctions|SteamVR", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", CallableWithoutWorldContext))
-		static bool GetActionPose(UPARAM(ref)FBPOpenVRActionInfo & Action, class UObject* WorldContextObject, bool bGetCompressedData = false, bool bGetGestureValues = false)
+		static bool GetActionPose(UPARAM(ref)FBPOpenVRActionInfo & Action, class UObject* WorldContextObject, bool bGetCompressedData = false, bool bGetGestureValues = true)
 	{
 #if !STEAMVR_SUPPORTED_PLATFORM
 		Action.bHasValidData = false;

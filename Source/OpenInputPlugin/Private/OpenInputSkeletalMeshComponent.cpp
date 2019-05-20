@@ -34,37 +34,25 @@ void UOpenInputSkeletalMeshComponent::GetLifetimeReplicatedProps(TArray< class F
 	DOREPLIFETIME_CONDITION(UOpenInputSkeletalMeshComponent, RightHandRep, COND_SkipOwner);
 }
 
-void UOpenInputSkeletalMeshComponent::Server_SendSkeletalTransforms_Implementation(const FBPOpenVRActionInfo &ActionInfo)
+void UOpenInputSkeletalMeshComponent::Server_SendSkeletalTransforms_Implementation(const FBPSkeletalRepContainer& SkeletalInfo)
 {
 	for (int i = 0; i < HandSkeletalActions.Num(); i++)
 	{
-		if (HandSkeletalActions[i].SkeletalData.TargetHand == ActionInfo.SkeletalData.TargetHand)
+		if (HandSkeletalActions[i].SkeletalData.TargetHand == SkeletalInfo.TargetHand)
 		{
-			HandSkeletalActions[i].SkeletalData.bAllowDeformingMesh = ActionInfo.SkeletalData.bAllowDeformingMesh;
-			HandSkeletalActions[i].bOnlyReplicateFingerCurlsAndSplays = ActionInfo.bOnlyReplicateFingerCurlsAndSplays;
-			
-			if (ActionInfo.bOnlyReplicateFingerCurlsAndSplays)
-			{
-				// Instead of doing this, we likely need to lerp but this is for testing
-				HandSkeletalActions[i].PoseFingerData = ActionInfo.PoseFingerData;
-			}
-			else
-			{
-				// Instead of doing this, we likely need to lerp but this is for testing
-				HandSkeletalActions[i].SkeletalData.SkeletalTransforms = ActionInfo.SkeletalData.SkeletalTransforms;
-			}
+			FBPSkeletalRepContainer::CopyReplicatedTo(SkeletalInfo, HandSkeletalActions[i]);
 
-			if (ActionInfo.SkeletalData.TargetHand == EVRActionHand::EActionHand_Left)
-				LeftHandRep = HandSkeletalActions[i];
+			if (SkeletalInfo.TargetHand == EVRActionHand::EActionHand_Left)
+				LeftHandRep = SkeletalInfo;
 			else
-				RightHandRep = HandSkeletalActions[i];
+				RightHandRep = SkeletalInfo;
 
 			break;
 		}
 	}
 }
 
-bool UOpenInputSkeletalMeshComponent::Server_SendSkeletalTransforms_Validate(const FBPOpenVRActionInfo &ActionInfo)
+bool UOpenInputSkeletalMeshComponent::Server_SendSkeletalTransforms_Validate(const FBPSkeletalRepContainer& SkeletalInfo)
 {
 	return true;
 }
@@ -235,26 +223,25 @@ void UOpenInputSkeletalMeshComponent::TickComponent(float DeltaTime, enum ELevel
 
 	for(FBPOpenVRActionInfo & actionInfo : HandSkeletalActions)
 	{
-		if (UOpenInputFunctionLibrary::GetActionPose(actionInfo, this, /*bGetCompressedTransforms*/false, GesturesDB != nullptr))
+		if (UOpenInputFunctionLibrary::GetActionPose(actionInfo, this,(bGetCompressedTransforms && actionInfo.ReplicationType == EVRSkeletalReplicationType::Rep_SteamVRCompressedTransforms)))
 		{
-			if (GetNetMode() == NM_Client/* && !IsTornOff()*/)
+			if (bGetCompressedTransforms && bReplicateSkeletalData)
 			{
-				// Need to htz limit this
-				if (bGetCompressedTransforms && bReplicateSkeletalData /*&& actionInfo.CompressedTransforms.Num() > 0*/)
-					Server_SendSkeletalTransforms(actionInfo);
-			}
-			else
-			{
-				if (bGetCompressedTransforms && bReplicateSkeletalData)
+				if (GetNetMode() == NM_Client/* && !IsTornOff()*/)
+				{
+					FBPSkeletalRepContainer ContainerSend;
+					ContainerSend.CopyForReplication(actionInfo);
+					Server_SendSkeletalTransforms(ContainerSend);
+				}
+				else
 				{
 					if (actionInfo.SkeletalData.TargetHand == EVRActionHand::EActionHand_Left)
-						LeftHandRep.CopyReplicated(actionInfo);
+						LeftHandRep.CopyForReplication(actionInfo);
 					else
-						RightHandRep.CopyReplicated(actionInfo);
+						RightHandRep.CopyForReplication(actionInfo);
 				}
 			}
 		}
-
 
 		if (bDetectGestures && actionInfo.bHasValidData && GesturesDB != nullptr && GesturesDB->Gestures.Num() > 0)
 		{
