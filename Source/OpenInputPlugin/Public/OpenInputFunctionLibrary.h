@@ -303,7 +303,7 @@ public:
 				SkeletalTransforms.AddUninitialized((uint8)EVROpenInputBones::eBone_Count - 10);
 			}
 
-			SkeletalTransforms[0] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Root];
+			SkeletalTransforms[0] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Root]; // This has no pos right? Need to skip pos on it
 			SkeletalTransforms[1] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Wrist];
 			SkeletalTransforms[2] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Thumb0];
 			SkeletalTransforms[3] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Thumb1];
