@@ -17,7 +17,7 @@ UOpenInputSkeletalMeshComponent::UOpenInputSkeletalMeshComponent(const FObjectIn
 	//PrimaryComponentTick.bCanEverTick = false;
 	//PrimaryComponentTick.bStartWithTickEnabled = false;
 
-	ReplicationRateForSkeletalAnimations = 20.f;
+	ReplicationRateForSkeletalAnimations = 10.f;
 	bReplicateSkeletalData = false;
 	bSmoothReplicatedSkeletalData = true;
 	ReplicationType = EVRSkeletalReplicationType::Rep_SteamVRCompressedTransforms;
