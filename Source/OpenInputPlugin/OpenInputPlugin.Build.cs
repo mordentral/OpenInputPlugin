@@ -14,7 +14,7 @@ public class OpenInputPlugin : ModuleRules
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         //bEnforceIWYU = true;
 
-        bool bCompileWithVRExpansion = true;
+        bool bCompileWithVRExpansion = false;
 
         if (bCompileWithVRExpansion)
         {

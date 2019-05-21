@@ -239,5 +239,5 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 
 bool FAnimNode_ApplyOpenInputTransform::IsValidToEvaluate(const USkeleton* Skeleton, const FBoneContainer& RequiredBones)
 {
-	return(MappedBonePairs.bInitialized && MappedBonePairs.BonePairs.Num());
+	return(/*MappedBonePairs.bInitialized && */MappedBonePairs.BonePairs.Num());
 }
