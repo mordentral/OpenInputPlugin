@@ -251,6 +251,11 @@ public:
 			}
 		}
 
+		FORCEINLINE void BlendBone(uint8 BoneToBlend, FBPOpenVRActionInfo& ActionInfo, float & LerpVal)
+		{
+			ActionInfo.SkeletalData.SkeletalTransforms[BoneToBlend].Blend(ActionInfo.OldSkeletalTransforms[BoneToBlend], NewTransforms[BoneToBlend], LerpVal);
+		}
+
 		void UpdateManager(float DeltaTime, FBPOpenVRActionInfo& ActionInfo)
 		{
 			if (bLerping)
@@ -271,10 +276,40 @@ public:
 						return;
 					}
 
-					for (int i = 0; i < ActionInfo.SkeletalData.SkeletalTransforms.Num(); i++)
-					{
-						ActionInfo.SkeletalData.SkeletalTransforms[i].Blend(ActionInfo.OldSkeletalTransforms[i], NewTransforms[i], LerpVal);
-					}
+					ActionInfo.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Root] = FTransform::Identity;
+					BlendBone((uint8)EVROpenInputBones::eBone_Wrist, ActionInfo, LerpVal);
+					BlendBone((uint8)EVROpenInputBones::eBone_Thumb0, ActionInfo, LerpVal);
+					BlendBone((uint8)EVROpenInputBones::eBone_Thumb1, ActionInfo, LerpVal);
+					BlendBone((uint8)EVROpenInputBones::eBone_Thumb2, ActionInfo, LerpVal);
+					BlendBone((uint8)EVROpenInputBones::eBone_Thumb3, ActionInfo, LerpVal); // Technically can be projected instead of blended
+					BlendBone((uint8)EVROpenInputBones::eBone_IndexFinger0, ActionInfo, LerpVal);
+					BlendBone((uint8)EVROpenInputBones::eBone_IndexFinger1, ActionInfo, LerpVal);
+					BlendBone((uint8)EVROpenInputBones::eBone_IndexFinger2, ActionInfo, LerpVal);
+					BlendBone((uint8)EVROpenInputBones::eBone_IndexFinger3, ActionInfo, LerpVal);
+					BlendBone((uint8)EVROpenInputBones::eBone_IndexFinger4, ActionInfo, LerpVal); // Technically can be projected instead of blended
+					BlendBone((uint8)EVROpenInputBones::eBone_MiddleFinger0, ActionInfo, LerpVal);
+					BlendBone((uint8)EVROpenInputBones::eBone_MiddleFinger1, ActionInfo, LerpVal);
+					BlendBone((uint8)EVROpenInputBones::eBone_MiddleFinger2, ActionInfo, LerpVal);
+					BlendBone((uint8)EVROpenInputBones::eBone_MiddleFinger3, ActionInfo, LerpVal);
+					BlendBone((uint8)EVROpenInputBones::eBone_MiddleFinger4, ActionInfo, LerpVal); // Technically can be projected instead of blended
+					BlendBone((uint8)EVROpenInputBones::eBone_RingFinger0, ActionInfo, LerpVal);
+					BlendBone((uint8)EVROpenInputBones::eBone_RingFinger1, ActionInfo, LerpVal);
+					BlendBone((uint8)EVROpenInputBones::eBone_RingFinger2, ActionInfo, LerpVal);
+					BlendBone((uint8)EVROpenInputBones::eBone_RingFinger3, ActionInfo, LerpVal);
+					BlendBone((uint8)EVROpenInputBones::eBone_RingFinger4, ActionInfo, LerpVal); // Technically can be projected instead of blended
+					BlendBone((uint8)EVROpenInputBones::eBone_PinkyFinger0, ActionInfo, LerpVal);
+					BlendBone((uint8)EVROpenInputBones::eBone_PinkyFinger1, ActionInfo, LerpVal);
+					BlendBone((uint8)EVROpenInputBones::eBone_PinkyFinger2, ActionInfo, LerpVal);
+					BlendBone((uint8)EVROpenInputBones::eBone_PinkyFinger3, ActionInfo, LerpVal);
+					BlendBone((uint8)EVROpenInputBones::eBone_PinkyFinger4, ActionInfo, LerpVal); // Technically can be projected instead of blended
+
+					// These are copied from the 3rd joints as they use the same transform but a different root
+					// Don't want to waste cpu time blending these
+					ActionInfo.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Aux_Thumb] = ActionInfo.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Thumb2];
+					ActionInfo.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Aux_IndexFinger] = ActionInfo.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_IndexFinger3];
+					ActionInfo.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Aux_MiddleFinger] = ActionInfo.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_MiddleFinger3];
+					ActionInfo.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Aux_RingFinger] = ActionInfo.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_RingFinger3];
+					ActionInfo.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Aux_PinkyFinger] = ActionInfo.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_PinkyFinger3];
 				}
 			}
 		}
