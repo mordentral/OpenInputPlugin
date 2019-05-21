@@ -214,6 +214,76 @@ public:
 	UFUNCTION(Unreliable, Server, WithValidation)
 		void Server_SendSkeletalTransforms(const FBPSkeletalRepContainer& SkeletalInfo);
 
+	bool bLerpingPositionLeft;
+	bool bReppedOnceLeft;
+
+	bool bLerpingPositionRight;
+	bool bReppedOnceRight;
+
+	struct FTransformLerpManager
+	{
+		bool bReplicatedOnce;
+		bool bLerping;
+		float UpdateCount;
+		float UpdateRate;
+		TArray<FTransform> NewTransforms;
+
+		FTransformLerpManager()
+		{
+			bReplicatedOnce = false;
+			bLerping = false;
+			UpdateCount = 0.0f;
+			UpdateRate = 0.0f;
+		}
+
+		void NotifyNewData(FBPOpenVRActionInfo& ActionInfo, int NetUpdateRate)
+		{
+			UpdateRate = (1.0f / NetUpdateRate);
+			if (bReplicatedOnce)
+			{
+				bLerping = true;
+				UpdateCount = 0.0f;
+				NewTransforms = ActionInfo.SkeletalData.SkeletalTransforms;
+			}
+			else
+			{
+				bReplicatedOnce = true;
+			}
+		}
+
+		void UpdateManager(float DeltaTime, FBPOpenVRActionInfo& ActionInfo)
+		{
+			if (bLerping)
+			{
+				UpdateCount += DeltaTime;
+				float LerpVal = FMath::Clamp(UpdateCount / UpdateRate, 0.0f, 1.0f);
+
+				if (LerpVal >= 1.0f)
+				{
+					bLerping = false;
+					UpdateCount = 0.0f;
+					ActionInfo.SkeletalData.SkeletalTransforms = NewTransforms;
+				}
+				else
+				{
+					if (NewTransforms.Num() != ActionInfo.SkeletalData.SkeletalTransforms.Num() || NewTransforms.Num() != ActionInfo.OldSkeletalTransforms.Num())
+					{
+						return;
+					}
+
+					for (int i = 0; i < ActionInfo.SkeletalData.SkeletalTransforms.Num(); i++)
+					{
+						ActionInfo.SkeletalData.SkeletalTransforms[i].Blend(ActionInfo.OldSkeletalTransforms[i], NewTransforms[i], LerpVal);
+					}
+				}
+			}
+		}
+
+	}; 
+	
+	FTransformLerpManager LeftHandRepManager;
+	FTransformLerpManager RightHandRepManager;
+
 	UFUNCTION()
 	virtual void OnRep_SkeletalTransformLeft()
 	{
@@ -221,7 +291,19 @@ public:
 		{
 			if (HandSkeletalActions[i].SkeletalData.TargetHand == LeftHandRep.TargetHand)
 			{
+				if (LeftHandRep.ReplicationType != EVRSkeletalReplicationType::Rep_SteamVRCompressedTransforms)
+					HandSkeletalActions[i].OldSkeletalTransforms = HandSkeletalActions[i].SkeletalData.SkeletalTransforms;
+
 				FBPSkeletalRepContainer::CopyReplicatedTo(LeftHandRep, HandSkeletalActions[i]);
+
+				if (HandSkeletalActions[i].CompressedTransforms.Num() > 0)
+				{
+					UOpenInputFunctionLibrary::DecompressSkeletalData(HandSkeletalActions[i], GetWorld());
+					HandSkeletalActions[i].CompressedTransforms.Reset();
+				}
+				
+				if(bSmoothReplicatedSkeletalData)
+					LeftHandRepManager.NotifyNewData(HandSkeletalActions[i], ReplicationRateForSkeletalAnimations);
 				break;
 			}
 		}
@@ -234,17 +316,37 @@ public:
 		{
 			if (HandSkeletalActions[i].SkeletalData.TargetHand == RightHandRep.TargetHand)
 			{
+				if (RightHandRep.ReplicationType != EVRSkeletalReplicationType::Rep_SteamVRCompressedTransforms)
+					HandSkeletalActions[i].OldSkeletalTransforms = HandSkeletalActions[i].SkeletalData.SkeletalTransforms;
+
 				FBPSkeletalRepContainer::CopyReplicatedTo(RightHandRep, HandSkeletalActions[i]);
+
+				if (HandSkeletalActions[i].CompressedTransforms.Num() > 0)
+				{
+					UOpenInputFunctionLibrary::DecompressSkeletalData(HandSkeletalActions[i], GetWorld());
+					HandSkeletalActions[i].CompressedTransforms.Reset();
+				}
+				
+				if (bSmoothReplicatedSkeletalData)
+					RightHandRepManager.NotifyNewData(HandSkeletalActions[i], ReplicationRateForSkeletalAnimations);
 				break;
 			}
 		}
 	}
 
+	// If we should replicate the skeletal transform data
 	UPROPERTY(EditAnywhere, Category = SkeletalData)
 		bool bReplicateSkeletalData;
+
+	// If true we will lerp between updates of the skeletal mesh transforms and smooth the result
+	UPROPERTY(EditAnywhere, Category = SkeletalData)
+		bool bSmoothReplicatedSkeletalData;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = SkeletalData)
 		float ReplicationRateForSkeletalAnimations;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = SkeletalData)
+		EVRSkeletalReplicationType ReplicationType;
 
 	// Used in Tick() to accumulate before sending updates, didn't want to use a timer in this case, also used for remotes to lerp position
 	float SkeletalNetUpdateCount;
