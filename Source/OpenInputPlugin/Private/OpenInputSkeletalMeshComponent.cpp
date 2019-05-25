@@ -268,16 +268,22 @@ void UOpenInputSkeletalMeshComponent::TickComponent(float DeltaTime, enum ELevel
 				{
 					if (GetNetMode() == NM_Client/* && !IsTornOff()*/)
 					{
-						FBPSkeletalRepContainer ContainerSend;
-						ContainerSend.CopyForReplication(actionInfo, ReplicationType);
-						Server_SendSkeletalTransforms(ContainerSend);
+						if (actionInfo.bHasValidData)
+						{
+							FBPSkeletalRepContainer ContainerSend;
+							ContainerSend.CopyForReplication(actionInfo, ReplicationType);
+							Server_SendSkeletalTransforms(ContainerSend);
+						}
 					}
 					else
 					{
-						if (actionInfo.SkeletalData.TargetHand == EVRActionHand::EActionHand_Left)
-							LeftHandRep.CopyForReplication(actionInfo, ReplicationType);
-						else
-							RightHandRep.CopyForReplication(actionInfo, ReplicationType);
+						if (actionInfo.bHasValidData)
+						{
+							if (actionInfo.SkeletalData.TargetHand == EVRActionHand::EActionHand_Left)
+								LeftHandRep.CopyForReplication(actionInfo, ReplicationType);
+							else
+								RightHandRep.CopyForReplication(actionInfo, ReplicationType);
+						}
 					}
 				}
 			}

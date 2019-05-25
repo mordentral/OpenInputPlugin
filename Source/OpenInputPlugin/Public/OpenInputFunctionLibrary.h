@@ -289,10 +289,18 @@ public:
 		BoneCount = 0;
 	}
 
+	bool bHasValidData()
+	{
+		return CompressedTransforms.Num() > 0 || SkeletalTransforms.Num() > 0 || PoseFingerData.PoseFingerCurls.Num() > 0;
+	}
+
 	void CopyForReplication(FBPOpenVRActionInfo& Other, EVRSkeletalReplicationType RepType)
 	{
 		TargetHand = Other.SkeletalData.TargetHand;
 		ReplicationType = RepType;
+
+		if (!Other.bHasValidData)
+			return;
 
 		switch (ReplicationType)
 		{
@@ -362,6 +370,7 @@ public:
 		case EVRSkeletalReplicationType::Rep_CurlAndSplay:
 		{
 			Other.PoseFingerData = Container.PoseFingerData;
+			Other.bHasValidData = true;
 		}break;
 
 		case EVRSkeletalReplicationType::Rep_HardTransforms:
@@ -369,6 +378,7 @@ public:
 			if (Container.SkeletalTransforms.Num() < ((uint8)EVROpenInputBones::eBone_Count - 11))
 			{
 				Other.SkeletalData.SkeletalTransforms.Empty();
+				Other.bHasValidData = false;
 				return;
 			}
 
@@ -424,13 +434,15 @@ public:
 			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Aux_MiddleFinger] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_MiddleFinger3];
 			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Aux_RingFinger] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_RingFinger3];
 			Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_Aux_PinkyFinger] = Other.SkeletalData.SkeletalTransforms[(uint8)EVROpenInputBones::eBone_PinkyFinger3];
-
+			Other.bHasValidData = true;
 		}break;
 
 		case EVRSkeletalReplicationType::Rep_SteamVRCompressedTransforms:
 		{
 			Other.BoneCount = Container.BoneCount;
 			Other.CompressedTransforms = Container.CompressedTransforms;
+			// This is handled in the decompression
+			//Other.bHasValidData = true;
 		}break;
 		}
 	}
@@ -652,7 +664,7 @@ public:
 		for (int i = 0; i < BoneTransforms.Num(); ++i)
 			Action.SkeletalData.SkeletalTransforms[i] = CONVERT_STEAMTRANS_TO_FTRANS(BoneTransforms[i], WorldToMeters);
 
-
+		Action.bHasValidData = true;
 		return true;
 #endif
 	}

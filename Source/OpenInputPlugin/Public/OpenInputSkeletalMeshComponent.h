@@ -262,6 +262,9 @@ public:
 
 		void UpdateManager(float DeltaTime, FBPOpenVRActionInfo& ActionInfo)
 		{
+			if (!ActionInfo.bHasValidData)
+				return;
+
 			if (bLerping)
 			{
 				UpdateCount += DeltaTime;
@@ -275,7 +278,7 @@ public:
 				}
 				else
 				{
-					if (NewTransforms.Num() != ActionInfo.SkeletalData.SkeletalTransforms.Num() || NewTransforms.Num() != ActionInfo.OldSkeletalTransforms.Num())
+					if ((NewTransforms.Num() < ((uint8)EVROpenInputBones::eBone_Count - 11)) || (NewTransforms.Num() != ActionInfo.SkeletalData.SkeletalTransforms.Num() || NewTransforms.Num() != ActionInfo.OldSkeletalTransforms.Num()))
 					{
 						return;
 					}
