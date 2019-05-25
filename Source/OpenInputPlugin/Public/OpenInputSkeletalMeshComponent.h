@@ -9,6 +9,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Animation/AnimInstanceProxy.h"
 #include "AnimNode_ApplyOpenInputTransform.h"
+#include "Runtime/Launch/Resources/Version.h"
 
 #if USE_WITH_VR_EXPANSION
 #include "VRBPDatatypes.h"
@@ -172,12 +173,15 @@ public:
 	// Need this as I can't think of another way for an actor component to make sure it isn't on the server
 	inline bool IsLocallyControlled() const
 	{
+#if ENGINE_MAJOR_VERSION >= 4 && ENGINE_MINOR_VERSION >= 22
+		const AActor* MyOwner = GetOwner();
+		return MyOwner->HasLocalNetOwner();
+#else
 		// I like epics new authority check more than mine
 		const AActor* MyOwner = GetOwner();
 		const APawn* MyPawn = Cast<APawn>(MyOwner);
 		return MyPawn ? MyPawn->IsLocallyControlled() : (MyOwner && MyOwner->Role == ENetRole::ROLE_Authority);
-		// #TODO: Convert to new 4.22 HasLocalNetOwner eventually
-		// HasLocalNetOwner
+#endif
 	}
 
 	// Using tick and not timers because skeletal components tick anyway, kind of a waste to make another tick by adding a timer over that
