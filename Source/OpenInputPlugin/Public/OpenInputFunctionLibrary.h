@@ -765,7 +765,7 @@ public:
 		if (bGetGestureValues)
 		{
 			vr::VRSkeletalSummaryData_t SkeletalSummaryData;
-			VRInput->GetSkeletalSummaryData(Action.ActionHandleContainer.ActionHandle, &SkeletalSummaryData);
+			VRInput->GetSkeletalSummaryData(Action.ActionHandleContainer.ActionHandle, vr::EVRSummaryType::VRSummaryType_FromAnimation, &SkeletalSummaryData);
 
 			if (InputError != vr::EVRInputError::VRInputError_None)
 				return false;
@@ -959,7 +959,7 @@ public:
 		}
 
 		vr::VRSkeletalSummaryData_t SkeletalSummaryData;
-		VRInput->GetSkeletalSummaryData(ActionHandle, &SkeletalSummaryData);
+		VRInput->GetSkeletalSummaryData(ActionHandle, vr::EVRSummaryType::VRSummaryType_FromAnimation, &SkeletalSummaryData);
 
 		if (InputError != vr::EVRInputError::VRInputError_None)
 			return false;
