@@ -9,7 +9,7 @@ public class OpenVRU : ModuleRules
 	public OpenVRU(ReadOnlyTargetRules Target) : base(Target)
 	{
 		/** Mark the current version of the OpenVR SDK */
-		string OpenVRVersion = "v1_1_3";
+		string OpenVRVersion = "v1_4_18";
 		Type = ModuleType.External;
 
 		string SdkBase = /*Target.UEThirdPartySourceDirectory +*/ ModuleDirectory + "/OpenVR" + OpenVRVersion;
