@@ -1,10 +1,5 @@
 // COPYRIGHT 1998-2018 EPIC GAMES, INC. ALL RIGHTS RESERVED.
 
-/*
-* Special thanks to Runeberg for originally deciding to copy / alter the SteamVRController class
-* This is roughly based off of an early version of that.
-*
-*/
 #pragma once
 
 #include "ISteamVRInputPlugin.h"
@@ -383,6 +378,12 @@ public:
 	{
 #if STEAMVRCONTROLLER_SUPPORTED_PLATFORMS
 #if WITH_EDITOR
+		IFileManager& FileManager = FFileManagerGeneric::Get();
+		if (FileManager.FileExists(*AppManifestPath))
+		{
+			FileManager.Delete(*AppManifestPath);
+		}
+
 		if (ActionMappingsChangedHandle.IsValid())
 		{
 			FEditorDelegates::OnActionAxisMappingsChanged.Remove(ActionMappingsChangedHandle);
@@ -1138,6 +1139,110 @@ private:
 	}
 #endif
 
+	/*
+	Some of the code in this file and following function has been referenced from the official Valve SteamVR Plugin
+	https://github.com/ValveSoftware/steamvr_unreal_plugin
+
+	Copyright 2019 Valve Corporation under https://opensource.org/licenses/BSD-3-Clause
+	Redistribution and use in source and binary forms, with or without modification,
+	are permitted provided that the following conditions are met:
+	1. Redistributions of source code must retain the above copyright notice, this
+	   list of conditions and the following disclaimer.
+	2. Redistributions in binary form must reproduce the above copyright notice,
+	   this list of conditions and the following disclaimer in the documentation
+	   and/or other materials provided with the distribution.
+	3. Neither the name of the copyright holder nor the names of its contributors
+	   may be used to endorse or promote products derived from this software
+	   without specific prior written permission.
+	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+	ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+	WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+	IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+	INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+	BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
+	OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+	WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+	ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+	POSSIBILITY OF SUCH DAMAGE.
+	*/
+	void RegisterApplicationWithSteam(FString ManifestPath)
+	{
+		FString GameProjectName;
+		uint32 AppProcessId = FPlatformProcess::GetCurrentProcessId();
+		FString GameFileName = FPaths::GetCleanFilename(FPlatformProcess::GetApplicationName(AppProcessId));
+		if (GConfig)
+		{
+			GConfig->GetString(
+				TEXT("/Script/EngineSettings.GeneralProjectSettings"),
+				TEXT("ProjectName"),
+				GameProjectName,
+				GGameIni
+			);
+		}
+
+		if (GameProjectName.IsEmpty())
+		{
+			GameProjectName = GameFileName;
+		}
+
+		FString CleanGameProjectName = GameProjectName.Replace(TEXT(" "), TEXT("-")).Replace(TEXT("*"), TEXT("-")).Replace(TEXT("."), TEXT("-"));
+		FString AppKey = (TEXT("application.generated.ue.") + CleanGameProjectName + TEXT(".") + GameFileName).ToLower();
+
+		// Set Application Manifest Path - same directory where the action manifest will be
+		AppManifestPath = FPaths::ProjectConfigDir() / TEXT("steamvr_ue_editor_app.json");
+		IFileManager & FileManager = FFileManagerGeneric::Get();
+
+		// Create Application Manifest json objects
+		TSharedRef<FJsonObject> AppManifestObject = MakeShareable(new FJsonObject());
+		TArray<TSharedPtr<FJsonValue>> ManifestApps;
+
+		// Add current engine version being used as source
+		AppManifestObject->SetStringField("source", FString::Printf(TEXT("UE")));
+
+		// Define the application setting that will be registered with SteamVR
+		TArray<TSharedPtr<FJsonValue>> ManifestApp;
+
+		// Create Application Object 
+		TSharedRef<FJsonObject> ApplicationObject = MakeShareable(new FJsonObject());
+		ApplicationObject->SetStringField("app_key", AppKey);
+		ApplicationObject->SetStringField("launch_type", "url");
+		ApplicationObject->SetStringField("url", "steam://launch/");
+		ApplicationObject->SetStringField("action_manifest_path", *IFileManager::Get().ConvertToAbsolutePathForExternalAppForRead(*ManifestPath));
+		
+		// Create localization object
+		TSharedPtr<FJsonObject> LocStringsObject = MakeShareable(new FJsonObject());
+		TSharedRef<FJsonObject> AppNameObject = MakeShareable(new FJsonObject());
+		AppNameObject->SetStringField("name", GameProjectName + " [UE Editor]");
+		LocStringsObject->SetObjectField("en_us", AppNameObject);
+		ApplicationObject->SetObjectField("strings", LocStringsObject);
+
+		// Assemble the json app manifest
+		ManifestApps.Add(MakeShareable(new FJsonValueObject(ApplicationObject)));
+		AppManifestObject->SetArrayField(TEXT("applications"), ManifestApps);
+
+		// Serialize json app manifest
+		FString AppManifestString;
+		TSharedRef<TJsonWriter<>> JsonWriter = TJsonWriterFactory<>::Create(&AppManifestString);
+		FJsonSerializer::Serialize(AppManifestObject, JsonWriter);
+
+		// Save json as a UTF8 file
+		if (!FFileHelper::SaveStringToFile(AppManifestString, *AppManifestPath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM))
+		{
+			UE_LOG(LogSteamVRInputController, Error, TEXT("Error trying to generate application manifest in: %s"), *AppManifestPath);
+			return;
+		}
+
+		char* SteamVRAppKey = TCHAR_TO_UTF8(*AppKey);
+
+		// Load application manifest
+		vr::EVRApplicationError AppError = vr::VRApplications()->AddApplicationManifest(TCHAR_TO_UTF8(*IFileManager::Get().ConvertToAbsolutePathForExternalAppForRead(*AppManifestPath)), true);
+		UE_LOG(LogSteamVRInputController, Display, TEXT("[STEAMVR INPUT] Registering Application Manifest %s : %s"), *AppManifestPath, *FString(UTF8_TO_TCHAR(vr::VRApplications()->GetApplicationsErrorNameFromEnum(AppError))));
+
+		// Set AppKey for this Editor Session
+		AppError = vr::VRApplications()->IdentifyApplication(AppProcessId, SteamVRAppKey);
+		UE_LOG(LogSteamVRInputController, Display, TEXT("[STEAMVR INPUT] Editor Application [%d][%s] identified to SteamVR: %s"), AppProcessId, *AppKey, *FString(UTF8_TO_TCHAR(vr::VRApplications()->GetApplicationsErrorNameFromEnum(AppError))));
+	}
+
 	void BuildActionManifest()
 	{
 		vr::IVRInput* VRInput;
@@ -1481,6 +1586,10 @@ private:
 					UE_LOG(LogSteamVRInputController, Error, TEXT("Failed to pass action manifest, %s, to SteamVR. Error: %d"), *ManifestPath, (int32)Err);
 				}
 
+#if WITH_EDITOR
+				RegisterApplicationWithSteam(ManifestPath);					
+#endif
+
 				// Get the action set handle for our main action set
 				Err = VRInput->GetActionSetHandle("/actions/main", &MainActionSet);
 				if (Err != vr::VRInputError_None)
@@ -1557,6 +1666,7 @@ private:
 
 	TArray<FSteamVRAction> Actions;
 	vr::VRActionSetHandle_t MainActionSet;
+	FString AppManifestPath;
 
 	/** Delay before sending a repeat message after a button was first pressed */
 	float InitialButtonRepeatDelay;
