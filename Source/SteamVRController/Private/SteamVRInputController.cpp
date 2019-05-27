@@ -378,10 +378,14 @@ public:
 	{
 #if STEAMVRCONTROLLER_SUPPORTED_PLATFORMS
 #if WITH_EDITOR
-		IFileManager& FileManager = FFileManagerGeneric::Get();
-		if (FileManager.FileExists(*AppManifestPath))
+		if (!AppManifestPath.IsEmpty())
 		{
-			FileManager.Delete(*AppManifestPath);
+			// Clean up the manifest file so it isn't PAK'd
+			IFileManager& FileManager = FFileManagerGeneric::Get();
+			if (FileManager.FileExists(*AppManifestPath))
+			{
+				FileManager.Delete(*AppManifestPath);
+			}
 		}
 
 		if (ActionMappingsChangedHandle.IsValid())
