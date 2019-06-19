@@ -1,0 +1,51 @@
+{
+	"FileVersion": 3,
+	"Version": 4.21,
+	"VersionName": "4.21",
+	"FriendlyName": "OpenInputPlugin",
+	"Description": "Adds several new nodes for open input support",
+	"Category": "VRExpansion",
+	"CreatedBy": "Joshua (MordenTral) Statzer",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"EnabledByDefault": true,
+	"CanContainContent": false,
+	"IsBetaVersion": false,
+	"Installed": true,
+	"Modules": [
+		{
+			"Name": "OpenInputPlugin",
+			"Type": "RunTime",
+			"LoadingPhase": "Default",
+			"WhitelistPlatforms" :
+			[
+				"Win64",
+				"Win32",
+				"Linux"
+			]
+		},
+		{
+			"Name": "OpenInputPluginEditor",
+			"Type": "Editor",
+			"LoadingPhase": "PreDefault",
+			"WhitelistPlatforms" :
+			[
+				"Win64",
+				"Win32",
+				"Linux"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "SteamVR",
+			"Enabled": true
+		},
+		{
+			"Name": "VRExpansionPlugin",
+			"Enabled": true
+		}
+	]
+}
