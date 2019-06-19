@@ -1710,12 +1710,14 @@ class FSteamVRInputControllerPlugin : public ISteamVRInputPlugin
 {
 	virtual TSharedPtr< class IInputDevice > CreateInputDevice(const TSharedRef< FGenericApplicationMessageHandler >& InMessageHandler) override
 	{
+		static const auto CVar = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("vr.SteamVR.EnableVRInput"));
+		bool bTakeOverControl = (CVar->GetValueOnGameThread() != 0) ? true : false;
 
 		// If the official SteamVRInputDevice is loaded then lets unload, not make an input device, and fail out
 		// I have to do it here because they set their module to load as late as possible
 		// Also if the vr input mode isn't the new beta input then we unload and let the default engine plugin manage it
 		FModuleManager& ModuleManager = FModuleManager::Get();
-		if (ModuleManager.IsModuleLoaded(FName("SteamVRInputDevice")))
+		if (ModuleManager.IsModuleLoaded(FName("SteamVRInputDevice")) || !bTakeOverControl)
 		{
 
 			ISteamVRInputPlugin* OurController = ModuleManager.GetModulePtr<ISteamVRInputPlugin>(FName("SteamVRInputController"));
