@@ -2,8 +2,8 @@
 	"FileVersion": 3,
 	"Version": 4.21,
 	"VersionName": "4.21",
-	"FriendlyName": "OpenInputPlugin",
-	"Description": "Adds several new nodes for open input support",
+	"FriendlyName": "SteamVRInputControllerPlugin",
+	"Description": "An override controller for SteamVR if the official valve one isn't active",
 	"Category": "VRExpansion",
 	"CreatedBy": "Joshua (MordenTral) Statzer",
 	"CreatedByURL": "",
@@ -16,31 +16,9 @@
 	"Installed": true,
 	"Modules": [
 		{
-			"Name": "OpenInputPlugin",
-			"Type": "RunTime",
-			"LoadingPhase": "Default",
-			"WhitelistPlatforms" :
-			[
-				"Win64",
-				"Win32",
-				"Linux"
-			]
-		},
-		{
 			"Name": "SteamVRInputController",
 			"Type": "RunTime",
 			"LoadingPhase": "PostDefault",
-			"WhitelistPlatforms" :
-			[
-				"Win64",
-				"Win32",
-				"Linux"
-			]
-		},
-		{
-			"Name": "OpenInputPluginEditor",
-			"Type": "Editor",
-			"LoadingPhase": "PreDefault",
 			"WhitelistPlatforms" :
 			[
 				"Win64",
