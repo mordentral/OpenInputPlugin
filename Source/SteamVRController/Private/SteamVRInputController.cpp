@@ -307,21 +307,25 @@ public:
 	{
 #if STEAMVRCONTROLLER_SUPPORTED_PLATFORMS
 		static const auto CVar = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("vr.SteamVR.EnableVRInput"));
-	
-		// Defer to Engine SteamVRController if it is enabled and legacy mode is active
-		// We already unload ourselves if that was the case
-		FMemory::Memzero(ControllerStates, sizeof(ControllerStates));
-		NumControllersMapped = 0;
-		NumTrackersMapped = 0;
+		bool bEnableVRInput = (CVar->GetValueOnGameThread() != 0) ? true : false;
 
-		InitialButtonRepeatDelay = 0.2f;
-		ButtonRepeatDelay = 0.1f;
+		if (bEnableVRInput)
+		{
+			// Defer to Engine SteamVRController if it is enabled and legacy mode is active
+			// We already unload ourselves if that was the case
+			FMemory::Memzero(ControllerStates, sizeof(ControllerStates));
+			NumControllersMapped = 0;
+			NumTrackersMapped = 0;
 
-		InitControllerMappings();
-		InitOpenVRControllerKeys();
-		BuildActionManifest();
+			InitialButtonRepeatDelay = 0.2f;
+			ButtonRepeatDelay = 0.1f;
 
-		IModularFeatures::Get().RegisterModularFeature(GetModularFeatureName(), this);
+			InitControllerMappings();
+			InitOpenVRControllerKeys();
+			BuildActionManifest();
+
+			IModularFeatures::Get().RegisterModularFeature(GetModularFeatureName(), this);
+		}
 #endif // STEAMVRINPUT_SUPPORTED_PLATFORMS
 	}
 
