@@ -127,6 +127,7 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 	FTransform TempTrans = FTransform::Identity;
 
 	TMap<int32, FTransform> ParentTransformArray;
+	ParentTransformArray.Reserve(MappedBonePairs.BonePairs.Num()); // Maximum value would be each bone having a unique parent somehow
 
 	for (const FBPOpenVRSkeletalPair& BonePair : MappedBonePairs.BonePairs)
 	{
@@ -239,5 +240,5 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 
 bool FAnimNode_ApplyOpenInputTransform::IsValidToEvaluate(const USkeleton* Skeleton, const FBoneContainer& RequiredBones)
 {
-	return(/*MappedBonePairs.bInitialized && */MappedBonePairs.BonePairs.Num());
+	return(/*MappedBonePairs.bInitialized && */MappedBonePairs.BonePairs.Num() > 0);
 }
