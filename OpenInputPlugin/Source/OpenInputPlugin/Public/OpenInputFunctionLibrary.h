@@ -602,7 +602,7 @@ public:
 #else
 
 		vr::EVRInitError Initerror;
-		vr::IVRInput * VRInput = (vr::IVRInput*)vr::VR_GetGenericInterface(vr::IVRInput_Version, &Initerror);
+		vr::IVRInput * VRInput =  vr::VRInput();
 
 		if (!VRInput)
 			return false;
@@ -628,8 +628,7 @@ public:
 		if (Action.CompressedTransforms.Num() < 1 || !WorldToUseForScale)
 			return false;
 
-		vr::EVRInitError Initerror;
-		vr::IVRInput * VRInput = (vr::IVRInput*)vr::VR_GetGenericInterface(vr::IVRInput_Version, &Initerror);
+		vr::IVRInput * VRInput =  vr::VRInput();
 
 		Action.bHasValidData = false;
 
@@ -677,8 +676,7 @@ public:
 		Action.bHasValidData = false;
 		return false;
 #else
-		vr::EVRInitError Initerror;
-		vr::IVRInput * VRInput = (vr::IVRInput*)vr::VR_GetGenericInterface(vr::IVRInput_Version, &Initerror);
+		vr::IVRInput * VRInput =  vr::VRInput();
 
 		Action.bHasValidData = false;
 
@@ -846,8 +844,7 @@ public:
 		Action.bHasValidData = false;
 		return false;
 #else
-		vr::EVRInitError Initerror;
-		vr::IVRInput * VRInput = (vr::IVRInput*)vr::VR_GetGenericInterface(vr::IVRInput_Version, &Initerror);
+		vr::IVRInput * VRInput =  vr::VRInput();
 
 		BlankActionToFill.bHasValidData = false;
 		BlankActionToFill.SkeletalData.bGetTransformsInParentSpace = bGetTransformsInParentSpace;
@@ -927,8 +924,7 @@ public:
 #if !STEAMVR_SUPPORTED_PLATFORM
 		return false;
 #else
-		vr::EVRInitError Initerror;
-		vr::IVRInput * VRInput = (vr::IVRInput*)vr::VR_GetGenericInterface(vr::IVRInput_Version, &Initerror);
+		vr::IVRInput * VRInput =  vr::VRInput();
 
 		if (!VRInput)
 			return false;
@@ -988,8 +984,7 @@ public:
 		SkeletalTrackingLevelOut = EVROpenInputSkeletalTrackingLevel::VRSkeletalTrackingLevel_Max;
 		return false;
 #else
-		vr::EVRInitError Initerror;
-		vr::IVRInput * VRInput = (vr::IVRInput*)vr::VR_GetGenericInterface(vr::IVRInput_Version, &Initerror);
+		vr::IVRInput * VRInput =  vr::VRInput();
 
 		if (!VRInput)
 			return false;
