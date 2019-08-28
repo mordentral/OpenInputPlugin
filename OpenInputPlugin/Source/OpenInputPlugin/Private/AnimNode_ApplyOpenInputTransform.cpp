@@ -128,10 +128,13 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 
 	TMap<int32, FTransform> ParentTransformArray;
 	ParentTransformArray.Reserve(MappedBonePairs.BonePairs.Num()); // Maximum value would be each bone having a unique parent somehow
+	FTransform ParentTrans = FTransform::Identity;
+	FTransform * ParentTransPtr = nullptr;
 
 	for (const FBPOpenVRSkeletalPair& BonePair : MappedBonePairs.BonePairs)
 	{
 		BoneTransIndex = (int8)BonePair.OpenVRBone;
+		ParentTrans = FTransform::Identity;
 
 		if (BoneTransIndex >= NumBones || BonePair.ReferenceToConstruct.CachedCompactPoseIndex == INDEX_NONE)
 			continue;		
@@ -143,12 +146,12 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 		
 		trans = Output.Pose.GetComponentSpaceTransform(BonePair.ReferenceToConstruct.CachedCompactPoseIndex);
 
-		FTransform ParentTrans = FTransform::Identity;
 		if (StoredActionInfoPtr->bGetTransformsInParentSpace && BonePair.ParentReference != INDEX_NONE)
 		{
-			if (ParentTransformArray.Contains(BonePair.ParentReference.GetInt()))
+			ParentTransPtr = ParentTransformArray.Find(BonePair.ParentReference.GetInt());
+			if (ParentTransPtr != nullptr)
 			{
-				ParentTrans = ParentTransformArray[BonePair.ParentReference.GetInt()];
+				ParentTrans = *ParentTransPtr;
 				ParentTrans.SetScale3D(FVector(1.f));
 			}
 			else
