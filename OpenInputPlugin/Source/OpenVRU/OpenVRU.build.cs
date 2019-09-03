@@ -44,7 +44,7 @@ public class OpenVRU : ModuleRules
 		}
 		else if (Target.Platform == UnrealTargetPlatform.Mac)
 		{
-			string DylibPath = /*Target.UEThirdPartyBinariesDirectory + */ ModuleDirectory + "/OpenVR" + OpenVRVersion + "/osx32/libopenvr_api.dylib";
+			string DylibPath = /*Target.UEThirdPartyBinariesDirectory + */ ModuleDirectory + "/OpenVR" + OpenVRVersion + "/bin/osx32/libopenvr_api.dylib";
 			PublicDelayLoadDLLs.Add(DylibPath);
 			PublicAdditionalShadowFiles.Add(DylibPath);
 			RuntimeDependencies.Add(DylibPath);
@@ -54,7 +54,7 @@ public class OpenVRU : ModuleRules
 			PublicLibraryPaths.Add(LibraryPath + "linux64");
 			PublicAdditionalLibraries.Add("openvr_api");
 
-			string DylibPath = /*Target.UEThirdPartyBinariesDirectory + */ ModuleDirectory + "/OpenVR" + OpenVRVersion + "/linux64/libopenvr_api.so";
+			string DylibPath = /*Target.UEThirdPartyBinariesDirectory + */ ModuleDirectory + "/OpenVR" + OpenVRVersion + "/bin/linux64/libopenvr_api.so";
 			PublicDelayLoadDLLs.Add(DylibPath);
 			RuntimeDependencies.Add(DylibPath);
 		}
