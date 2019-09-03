@@ -61,16 +61,17 @@ public class OpenInputPlugin : ModuleRules
         }
 
 
-
-        if (Target.Platform == UnrealTargetPlatform.Win32 || Target.Platform == UnrealTargetPlatform.Win64 || 
-		(Target.Platform == UnrealTargetPlatform.Linux && Target.Architecture.StartsWith("x86_64")))
-		{
-		PublicDependencyModuleNames.AddRange(
+        if (
+            Target.Platform == UnrealTargetPlatform.Win64 ||
+            Target.Platform == UnrealTargetPlatform.Win32 ||
+            Target.Platform == UnrealTargetPlatform.Mac ||
+            (Target.Platform == UnrealTargetPlatform.Linux && Target.Architecture.StartsWith("x86_64"))
+            )
+        {
+            PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
-			//"SteamVR",
 			"OpenVRU",
-			//"SteamVRController"
 			});
 		}
 
