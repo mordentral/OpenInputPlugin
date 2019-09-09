@@ -676,6 +676,67 @@ public:
 		Action.bHasValidData = false;
 		return false;
 #else
+
+		Action.bHasValidData = true;
+		Action.BoneCount = 31;
+		Action.SkeletalData.SkeletalTransforms.Reset(Action.BoneCount);
+
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-6.12323426e-17, -6.12323426e-17, -3.74939939e-33, -1.00000000), FVector(0.000000, 0.000000, 0.000000)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(0.078608, -0.920279, 0.379296, 0.055147), FVector(0.034038, 0.036503, 0.164722)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-0.032980, 0.642452, 0.177896, -0.744661), FVector(0.015893, 0.037202, 0.129626)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(0.062613, -0.641222, -0.081999, 0.760388), FVector(0.011399, 0.049619, 0.091439)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(0.202745, -0.594267, -0.249441, 0.737239), FVector(0.006059, 0.056285, 0.060064)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(0.202745, -0.594267, -0.249441, 0.737239), FVector(0.000903, 0.074831, 0.036452)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(0.602551, 0.647012, 0.373282, -0.281014), FVector(0.029019, 0.044768, 0.135503)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-0.669277, -0.604607, -0.318717, 0.291441), FVector(0.042551, 0.002262, 0.075993)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-0.626055, -0.648056, -0.305172, 0.308137), FVector(0.039663, -0.025130, 0.041770)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-0.623527, -0.663809, -0.293734, 0.290331), FVector(0.040416, -0.043018, 0.019345)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-0.623527, -0.663809, -0.293734, 0.290331), FVector(0.041644, -0.058017, 0.002189)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(0.569604, 0.714872, 0.237212, -0.328998), FVector(0.034164, 0.030176, 0.147938)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-0.681727, -0.647574, -0.284311, 0.187252), FVector(0.043159, -0.017431, 0.096086)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-0.711895, -0.608206, -0.269531, 0.225043), FVector(0.043175, -0.050903, 0.068921)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-0.678062, -0.659285, -0.265683, 0.187047), FVector(0.039354, -0.075674, 0.047048)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-0.703971, -0.631547, -0.257964, 0.197557), FVector(0.039625, -0.096250, 0.031333)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(0.604345, 0.717512, 0.205713, -0.278612), FVector(0.035078, 0.020420, 0.157607)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-0.687871, -0.683120, -0.164126, 0.182327), FVector(0.040958, -0.029928, 0.115490)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-0.708515, -0.661749, -0.160099, 0.185643), FVector(0.040436, -0.065739, 0.096164)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-0.736793, -0.634757, -0.143936, 0.183037), FVector(0.038340, -0.090987, 0.082579)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-0.736793, -0.634757, -0.143936, 0.183037), FVector(0.034914, -0.110785, 0.072609)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(0.649283, 0.709908, 0.228285, -0.149493), FVector(0.034509, 0.012210, 0.167464)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-0.729502, -0.662042, -0.169427, 0.028676), FVector(0.038718, -0.041785, 0.135390)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-0.796114, -0.580514, -0.164037, 0.047926), FVector(0.036724, -0.070681, 0.126773)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-0.759130, -0.638501, -0.126582, 0.003951), FVector(0.031774, -0.087206, 0.121011)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-0.759130, -0.638501, -0.126582, 0.003951), FVector(0.029025, -0.104654, 0.117457)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(0.202745, -0.594267, -0.249441, 0.737238), FVector(0.006059, 0.056285, 0.060064)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-0.623527, -0.663809, -0.293734, 0.290331), FVector(0.040416, -0.043018, 0.019345)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-0.678062, -0.659285, -0.265683, 0.187047), FVector(0.039354, -0.075674, 0.047048)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-0.736793, -0.634757, -0.143936, 0.183037), FVector(0.038340, -0.090987, 0.082579)));
+		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-0.759130, -0.638501, -0.126581, 0.003950), FVector(0.031774, -0.087205, 0.121011)));
+
+		FRotator sdssd = Action.SkeletalData.SkeletalTransforms[0].Rotator();
+
+		for (int i = 0; i < Action.SkeletalData.SkeletalTransforms.Num(); i++)
+		{
+
+			vr::VRBoneTransform_t trans;
+			FQuat rot = Action.SkeletalData.SkeletalTransforms[i].GetRotation();
+			FVector pos = Action.SkeletalData.SkeletalTransforms[i].GetTranslation();
+
+			trans.orientation.w = rot.W;
+			trans.orientation.x = rot.X;
+			trans.orientation.y = rot.Y;
+			trans.orientation.z = rot.Z;
+
+			trans.position.v[0] = pos.X;
+			trans.position.v[1] = pos.Y;
+			trans.position.v[2] = pos.Z;
+
+			Action.SkeletalData.SkeletalTransforms[i] = CONVERT_STEAMTRANS_TO_FTRANS(trans, 100.0f);
+		}
+
+		return true;
+
+
 		vr::IVRInput * VRInput =  vr::VRInput();
 
 		Action.bHasValidData = false;
@@ -844,6 +905,7 @@ public:
 		Action.bHasValidData = false;
 		return false;
 #else
+
 		vr::IVRInput * VRInput =  vr::VRInput();
 
 		BlankActionToFill.bHasValidData = false;
