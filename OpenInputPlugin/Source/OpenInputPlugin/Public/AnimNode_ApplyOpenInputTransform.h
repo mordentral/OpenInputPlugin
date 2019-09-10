@@ -68,6 +68,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Default")
 		EVRActionHand TargetHand;
 
+	FQuat AdjustmentQuat;
 	bool bInitialized;
 
 	void ConstructDefaultMappings(EVROpenVRSkeletonType SkeletonType, bool bSkipRootBone)
@@ -194,6 +195,7 @@ public:
 
 	FBPSkeletalMappingData()
 	{
+		AdjustmentQuat = FQuat::Identity;
 		bInitialized = false;
 		bMergeMissingBonesUE4 = false;
 		TargetHand = EVRActionHand::EActionHand_Right;
@@ -225,6 +227,45 @@ public:
 		FBPSkeletalMappingData MappedBonePairs;
 
 	bool bIsOpenInputAnimationInstance;
+
+	FTransform GetRefBoneInCS(TArray<FTransform>& RefBones, TArray<FMeshBoneInfo>& RefBonesInfo, int32 BoneIndex)
+	{
+		FTransform BoneTransform;
+
+		if (BoneIndex >= 0)
+		{
+			BoneTransform = RefBones[BoneIndex];
+			if (RefBonesInfo[BoneIndex].ParentIndex >= 0)
+			{
+				BoneTransform *= GetRefBoneInCS(RefBones, RefBonesInfo, RefBonesInfo[BoneIndex].ParentIndex);
+			}
+		}
+
+		return BoneTransform;
+	}
+
+	void SetVectorToMaxElement(FVector& vec)
+	{
+		float aX = FMath::Abs(vec.X);
+		float aY = FMath::Abs(vec.Y);
+
+		if (aY < aX)
+		{
+			vec.Y = 0.f;
+			if (FMath::Abs(vec.Z) < aX)
+				vec.Z = 0.f;
+			else
+				vec.X = 0.f;
+		}
+		else
+		{
+			vec.X = 0.f;
+			if (FMath::Abs(vec.Z) < aY)
+				vec.Z = 0;
+			else
+				vec.Y = 0;
+		}
+	}
 
 	// FAnimNode_SkeletalControlBase interface
 	//virtual void UpdateInternal(const FAnimationUpdateContext& Context) override;
