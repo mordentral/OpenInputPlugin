@@ -225,12 +225,32 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 
 			if (StoredActionInfoPtr->bGetTransformsInParentSpace)
 				ParentTransformArray.Add(BonePair.ReferenceToConstruct.CachedCompactPoseIndex.GetInt(), trans);
+
+
+
+			if (StoredActionInfoPtr->bAllowDeformingMesh)
+			{
+				//trans = (AdditionTransform)* trans;
+
+				if (!StoredActionInfoPtr->bGetTransformsInParentSpace)
+				{
+					trans.SetTranslation(MappedBonePairs.AdjustmentQuat.RotateVector(trans.GetTranslation()));
+					trans.SetRotation((MappedBonePairs.AdjustmentQuat * trans.GetRotation()).GetNormalized());
+				}
+			}
+			else
+			{
+				//trans.ConcatenateRotation(AdditionTransform.GetRotation());
+				if (!StoredActionInfoPtr->bGetTransformsInParentSpace)
+					trans.SetRotation((MappedBonePairs.AdjustmentQuat * trans.GetRotation()).GetNormalized());
+			}
 		}
 		else
 		{
+			EVROpenInputBones CurrentBone = (EVROpenInputBones)BoneTransIndex;
+
 			if (StoredActionInfoPtr->bGetTransformsInParentSpace && MappedBonePairs.bMergeMissingBonesUE4)
-			{
-				EVROpenInputBones CurrentBone = (EVROpenInputBones)BoneTransIndex;
+			{			
 				if (CurrentBone == EVROpenInputBones::eBone_MiddleFinger1 ||
 					CurrentBone == EVROpenInputBones::eBone_IndexFinger1 ||
 					CurrentBone == EVROpenInputBones::eBone_PinkyFinger1 ||
@@ -269,7 +289,7 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 			{
 				trans = (AdditionTransform)* trans;
 
-				if (!StoredActionInfoPtr->bGetTransformsInParentSpace)
+				if (CurrentBone != EVROpenInputBones::eBone_Root )//&& !StoredActionInfoPtr->bGetTransformsInParentSpace)
 				{
 					trans.SetTranslation(MappedBonePairs.AdjustmentQuat.RotateVector(trans.GetTranslation()));
 					trans.SetRotation((MappedBonePairs.AdjustmentQuat * trans.GetRotation()).GetNormalized());
@@ -278,7 +298,7 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 			else
 			{
 				trans.ConcatenateRotation(AdditionTransform.GetRotation());
-				if (!StoredActionInfoPtr->bGetTransformsInParentSpace)
+				if (CurrentBone != EVROpenInputBones::eBone_Root)// && !StoredActionInfoPtr->bGetTransformsInParentSpace)
 					trans.SetRotation((MappedBonePairs.AdjustmentQuat * trans.GetRotation()).GetNormalized());
 			}
 		}

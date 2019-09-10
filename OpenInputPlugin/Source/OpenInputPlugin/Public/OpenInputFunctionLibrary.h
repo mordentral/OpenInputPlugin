@@ -676,8 +676,8 @@ public:
 		Action.bHasValidData = false;
 		return false;
 #else
-
-		Action.bHasValidData = true;
+		// An exported valid hand pose for testing, don't mine me
+		/*Action.bHasValidData = true;
 		Action.BoneCount = 31;
 		Action.SkeletalData.SkeletalTransforms.Reset(Action.BoneCount);
 
@@ -713,8 +713,6 @@ public:
 		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-0.736793, -0.634757, -0.143936, 0.183037), FVector(0.038340, -0.090987, 0.082579)));
 		Action.SkeletalData.SkeletalTransforms.Add(FTransform(FQuat(-0.759130, -0.638501, -0.126581, 0.003950), FVector(0.031774, -0.087205, 0.121011)));
 
-		FRotator sdssd = Action.SkeletalData.SkeletalTransforms[0].Rotator();
-
 		for (int i = 0; i < Action.SkeletalData.SkeletalTransforms.Num(); i++)
 		{
 
@@ -734,7 +732,7 @@ public:
 			Action.SkeletalData.SkeletalTransforms[i] = CONVERT_STEAMTRANS_TO_FTRANS(trans, 100.0f);
 		}
 
-		return true;
+		return true;*/
 
 
 		vr::IVRInput * VRInput =  vr::VRInput();

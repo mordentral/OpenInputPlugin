@@ -121,7 +121,7 @@ void UOpenInputSkeletalMeshComponent::GetCurrentProfileTransform(bool bBindToNot
 			CurrentControllerProfileTransform = NewControllerProfileTransform;
 
 			// Auto adjust ourselves
-			this->SetRelativeTransform(CurrentControllerProfileTransform.Inverse() * OriginalControllerProfileTransform);// *(OriginalControllerProfileTransform.Inverse() * this->GetRelativeTransform()));
+			this->SetRelativeTransform((OriginalControllerProfileTransform.Inverse() * this->GetRelativeTransform()) * CurrentControllerProfileTransform.Inverse());
 		}
 	}
 #endif
