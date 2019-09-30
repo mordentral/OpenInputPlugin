@@ -147,7 +147,7 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 
 	if (NumBones < 1)
 	{
-		for (const FBPOpenVRSkeletalPair& BonePair : MappedBonePairs.BonePairs)
+		/*for (const FBPOpenVRSkeletalPair& BonePair : MappedBonePairs.BonePairs)
 		{
 			if (BonePair.ReferenceToConstruct.CachedCompactPoseIndex == INDEX_NONE)
 				continue;
@@ -158,8 +158,9 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 			}
 			
 			OutBoneTransforms.Emplace(BonePair.ReferenceToConstruct.CachedCompactPoseIndex, Output.Pose.GetComponentSpaceTransform(BonePair.ReferenceToConstruct.CachedCompactPoseIndex));
-		}
+		}*/
 
+		// Early out, we don't have a valid data to work with
 		return;
 	}
 
