@@ -71,6 +71,8 @@ public:
 	FQuat AdjustmentQuat;
 	bool bInitialized;
 
+	FName LastInitializedName;
+
 	void ConstructDefaultMappings(EVROpenVRSkeletonType SkeletonType, bool bSkipRootBone)
 	{
 		switch (SkeletonType)
@@ -199,6 +201,7 @@ public:
 		bInitialized = false;
 		bMergeMissingBonesUE4 = false;
 		TargetHand = EVRActionHand::EActionHand_Right;
+		LastInitializedName = NAME_None;
 	}
 };
 

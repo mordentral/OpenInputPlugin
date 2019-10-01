@@ -32,13 +32,19 @@ void FAnimNode_ApplyOpenInputTransform::OnInitializeAnimInstance(const FAnimInst
 
 void FAnimNode_ApplyOpenInputTransform::InitializeBoneReferences(const FBoneContainer& RequiredBones)
 {
-	if (!MappedBonePairs.bInitialized)
-	{
-		USkeleton * AssetSkeleton = RequiredBones.GetSkeletonAsset();
 
+	UObject* OwningAsset = RequiredBones.GetAsset();
+	if (!OwningAsset)
+		return;
+
+	if (!MappedBonePairs.bInitialized || OwningAsset->GetFName() != MappedBonePairs.LastInitializedName)
+	{
+		MappedBonePairs.LastInitializedName = OwningAsset->GetFName();
+		MappedBonePairs.bInitialized = false;
+		
+		USkeleton* AssetSkeleton = RequiredBones.GetSkeletonAsset();
 		if (AssetSkeleton)
 		{
-
 			// If our bone pairs are empty, then setup our sane defaults
 			if(!MappedBonePairs.BonePairs.Num())
 				MappedBonePairs.ConstructDefaultMappings(SkeletonType, bSkipRootBone);
