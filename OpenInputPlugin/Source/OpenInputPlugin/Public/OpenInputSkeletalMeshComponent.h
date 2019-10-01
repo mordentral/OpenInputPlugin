@@ -465,6 +465,11 @@ public:
 				}
 			}
 
+			if (UObject * OwningAsset = RequiredBones.GetAsset())
+			{
+				SkeletalMappingData.LastInitializedName = OwningAsset->GetFName();
+			}
+
 			SkeletalMappingData.bInitialized = true;
 			return;
 		}
