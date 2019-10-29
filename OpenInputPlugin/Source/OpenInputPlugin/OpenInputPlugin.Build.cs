@@ -18,11 +18,11 @@ public class OpenInputPlugin : ModuleRules
 
         if (bCompileWithVRExpansion)
         {
-            PrivateDefinitions.Add("USE_WITH_VR_EXPANSION=1");
+            PublicDefinitions.Add("USE_WITH_VR_EXPANSION=1");
         }
         else
         {
-            PrivateDefinitions.Add("USE_WITH_VR_EXPANSION=0");
+            PublicDefinitions.Add("USE_WITH_VR_EXPANSION=0");
         }
 		
         PublicIncludePaths.AddRange(
