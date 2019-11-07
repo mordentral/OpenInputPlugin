@@ -71,7 +71,7 @@ public class OpenInputPlugin : ModuleRules
             PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
-			"OpenVRU",
+			"OpenVR",
 			});
 		}
 
