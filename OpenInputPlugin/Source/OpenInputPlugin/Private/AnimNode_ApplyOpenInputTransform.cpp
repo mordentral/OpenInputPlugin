@@ -32,7 +32,6 @@ void FAnimNode_ApplyOpenInputTransform::OnInitializeAnimInstance(const FAnimInst
 
 void FAnimNode_ApplyOpenInputTransform::InitializeBoneReferences(const FBoneContainer& RequiredBones)
 {
-
 	UObject* OwningAsset = RequiredBones.GetAsset();
 	if (!OwningAsset)
 		return;
