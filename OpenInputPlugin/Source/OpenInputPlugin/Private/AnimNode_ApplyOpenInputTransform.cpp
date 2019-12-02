@@ -18,6 +18,7 @@ FAnimNode_ApplyOpenInputTransform::FAnimNode_ApplyOpenInputTransform()
 	SkeletonType = EVROpenVRSkeletonType::OVR_SkeletonType_UE4Default_Right;
 	bIsOpenInputAnimationInstance = false;
 	bSkipRootBone = false;
+	bOnlyApplyWristTransform = false;
 }
 
 void FAnimNode_ApplyOpenInputTransform::OnInitializeAnimInstance(const FAnimInstanceProxy* InProxy, const UAnimInstance* InAnimInstance)
@@ -129,9 +130,17 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 		const FOpenInputAnimInstanceProxy* OpenInputAnimInstance = (FOpenInputAnimInstanceProxy*)Output.AnimInstanceProxy;
 		if (OpenInputAnimInstance->HandSkeletalActionData.Num())
 		{
+
 			for (int i = 0; i <OpenInputAnimInstance->HandSkeletalActionData.Num(); ++i)
 			{
-				if (OpenInputAnimInstance->HandSkeletalActionData[i].TargetHand == MappedBonePairs.TargetHand)
+				EVRActionHand TargetHand = OpenInputAnimInstance->HandSkeletalActionData[i].TargetHand;
+
+				if (OpenInputAnimInstance->HandSkeletalActionData[i].bMirrorLeftRight)
+				{
+					TargetHand = (TargetHand == EVRActionHand::EActionHand_Left) ? EVRActionHand::EActionHand_Right : EVRActionHand::EActionHand_Left;
+				}
+
+				if (TargetHand == MappedBonePairs.TargetHand)
 				{
 					StoredActionInfoPtr = &OpenInputAnimInstance->HandSkeletalActionData[i];
 					break;
@@ -178,13 +187,11 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 		AdditionTransform.Mirror(EAxis::X, EAxis::Y);
 	}
 
-
 	FTransform TempTrans = FTransform::Identity;
-
-	TMap<int32, FTransform> ParentTransformArray;
-	ParentTransformArray.Reserve(MappedBonePairs.BonePairs.Num()); // Maximum value would be each bone having a unique parent somehow
 	FTransform ParentTrans = FTransform::Identity;
 	FTransform * ParentTransPtr = nullptr;
+	FQuat AdjustmentQuatInv = MappedBonePairs.AdjustmentQuat.Inverse();
+	FTransform AdditionTransformInv = AdditionTransform.Inverse();
 
 	for (const FBPOpenVRSkeletalPair& BonePair : MappedBonePairs.BonePairs)
 	{
@@ -201,129 +208,101 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 		
 		trans = Output.Pose.GetComponentSpaceTransform(BonePair.ReferenceToConstruct.CachedCompactPoseIndex);
 
-		if (StoredActionInfoPtr->bGetTransformsInParentSpace && BonePair.ParentReference != INDEX_NONE)
+		if (BonePair.ParentReference != INDEX_NONE)
 		{
-			ParentTransPtr = ParentTransformArray.Find(BonePair.ParentReference.GetInt());
-			if (ParentTransPtr != nullptr)
+			ParentTrans = Output.Pose.GetComponentSpaceTransform(BonePair.ParentReference);
+			if (FBPOpenVRSkeletalPair * ParentPair = MappedBonePairs.BonePairs.FindByKey(BonePair.ParentReference.GetInt()))
 			{
-				ParentTrans = *ParentTransPtr;
-				ParentTrans.SetScale3D(FVector(1.f));
-			}
-			else
-			{
-				ParentTrans = Output.Pose.GetComponentSpaceTransform(BonePair.ParentReference);
-				ParentTrans.SetScale3D(FVector(1.f));
-				ParentTransformArray.Add(BonePair.ParentReference.GetInt(), ParentTrans);
-			}
-		}
-
-		if (MappedBonePairs.bMergeMissingBonesUE4 && BoneTransIndex <= 1)
-		{
-			if (BoneTransIndex == 1)
-				TempTrans = (StoredActionInfoPtr->SkeletalTransforms[BoneTransIndex - 1] * StoredActionInfoPtr->SkeletalTransforms[BoneTransIndex]) * ParentTrans;
-			else if (BoneTransIndex == 0)
-				TempTrans = (StoredActionInfoPtr->SkeletalTransforms[BoneTransIndex] * StoredActionInfoPtr->SkeletalTransforms[BoneTransIndex + 1]) * ParentTrans;
-
-			if (StoredActionInfoPtr->bAllowDeformingMesh)
-				trans.SetTranslation(TempTrans.GetTranslation());
-
-			trans.SetRotation(TempTrans.GetRotation());
-
-			if (StoredActionInfoPtr->bGetTransformsInParentSpace)
-				ParentTransformArray.Add(BonePair.ReferenceToConstruct.CachedCompactPoseIndex.GetInt(), trans);
-
-
-
-			if (StoredActionInfoPtr->bAllowDeformingMesh)
-			{
-				//trans = (AdditionTransform)* trans;
-
-				if (!StoredActionInfoPtr->bGetTransformsInParentSpace)
+				if(!MappedBonePairs.bMergeMissingBonesUE4 || ParentPair->OpenVRBone != EVROpenInputBones::eBone_Wrist)
 				{
-					trans.SetTranslation(MappedBonePairs.AdjustmentQuat.RotateVector(trans.GetTranslation()));
-					trans.SetRotation((MappedBonePairs.AdjustmentQuat * trans.GetRotation()).GetNormalized());
+					if (StoredActionInfoPtr->bAllowDeformingMesh)
+					{
+						if (ParentPair->OpenVRBone != EVROpenInputBones::eBone_Root)
+						{
+							ParentTrans = AdditionTransformInv * ParentTrans;
+						}			
+					}
+					else
+					{
+						if (ParentPair->OpenVRBone != EVROpenInputBones::eBone_Root)
+						{
+							ParentTrans.ConcatenateRotation(AdditionTransformInv.GetRotation());
+						}					
+					}
 				}
 			}
+
+			ParentTrans.SetScale3D(FVector(1.f));
+		}
+
+		EVROpenInputBones CurrentBone = (EVROpenInputBones)BoneTransIndex;
+		
+		if (MappedBonePairs.bMergeMissingBonesUE4)
+		{			
+			if (CurrentBone == EVROpenInputBones::eBone_MiddleFinger1 ||
+				CurrentBone == EVROpenInputBones::eBone_IndexFinger1 ||
+				CurrentBone == EVROpenInputBones::eBone_PinkyFinger1 ||
+				CurrentBone == EVROpenInputBones::eBone_RingFinger1
+				)
+			{
+				TempTrans = (StoredActionInfoPtr->SkeletalTransforms[BoneTransIndex] * StoredActionInfoPtr->SkeletalTransforms[BoneTransIndex - 1]);// *ParentTrans;
+			}
 			else
 			{
-				//trans.ConcatenateRotation(AdditionTransform.GetRotation());
-				if (!StoredActionInfoPtr->bGetTransformsInParentSpace)
-					trans.SetRotation((MappedBonePairs.AdjustmentQuat * trans.GetRotation()).GetNormalized());
+				TempTrans = (StoredActionInfoPtr->SkeletalTransforms[BoneTransIndex]);// *ParentTrans;
+			}
+		}
+		else
+			TempTrans = (StoredActionInfoPtr->SkeletalTransforms[BoneTransIndex]);// *ParentTrans;
+			
+		if (StoredActionInfoPtr->bMirrorHand)
+		{
+			FMatrix M = TempTrans.ToMatrixWithScale();
+			M.Mirror(EAxis::Z, EAxis::X);
+			M.Mirror(EAxis::X, EAxis::Z);
+			TempTrans.SetFromMatrix(M);
+		}
+
+		TempTrans = TempTrans * ParentTrans;
+
+		if (StoredActionInfoPtr->bAllowDeformingMesh)
+			trans.SetTranslation(TempTrans.GetTranslation());
+
+		trans.SetRotation(TempTrans.GetRotation());
+
+		if (StoredActionInfoPtr->bAllowDeformingMesh)
+		{
+			if((!MappedBonePairs.bMergeMissingBonesUE4 && CurrentBone != EVROpenInputBones::eBone_Root) || (MappedBonePairs.bMergeMissingBonesUE4 && CurrentBone != EVROpenInputBones::eBone_Wrist))
+				trans = AdditionTransform * trans;
+
+			if (CurrentBone == EVROpenInputBones::eBone_Wrist)
+			{
+				trans.SetTranslation(MappedBonePairs.AdjustmentQuat.RotateVector(trans.GetTranslation()));
+				trans.SetRotation((MappedBonePairs.AdjustmentQuat * trans.GetRotation()).GetNormalized());
 			}
 		}
 		else
 		{
-			EVROpenInputBones CurrentBone = (EVROpenInputBones)BoneTransIndex;
-
-			if (StoredActionInfoPtr->bGetTransformsInParentSpace && MappedBonePairs.bMergeMissingBonesUE4)
-			{			
-				if (CurrentBone == EVROpenInputBones::eBone_MiddleFinger1 ||
-					CurrentBone == EVROpenInputBones::eBone_IndexFinger1 ||
-					CurrentBone == EVROpenInputBones::eBone_PinkyFinger1 ||
-					CurrentBone == EVROpenInputBones::eBone_RingFinger1
-					)
-				{
-					TempTrans = (StoredActionInfoPtr->SkeletalTransforms[BoneTransIndex] * StoredActionInfoPtr->SkeletalTransforms[BoneTransIndex - 1]);// *ParentTrans;
-				}
-				else
-				{
-					TempTrans = (StoredActionInfoPtr->SkeletalTransforms[BoneTransIndex]);// *ParentTrans;
-				}
-			}
-			else
-				TempTrans = (StoredActionInfoPtr->SkeletalTransforms[BoneTransIndex]);// *ParentTrans;
-			
-			if (StoredActionInfoPtr->bMirrorHand)
-			{
-				FMatrix M = TempTrans.ToMatrixWithScale();
-				M.Mirror(EAxis::Z, EAxis::X);
-				M.Mirror(EAxis::X, EAxis::Z);
-				TempTrans.SetFromMatrix(M);
-			}
-
-			TempTrans = TempTrans * ParentTrans;
-
-			if (StoredActionInfoPtr->bAllowDeformingMesh)
-				trans.SetTranslation(TempTrans.GetTranslation());
-
-			trans.SetRotation(TempTrans.GetRotation());
-
-			if (StoredActionInfoPtr->bGetTransformsInParentSpace)
-				ParentTransformArray.Add(BonePair.ReferenceToConstruct.CachedCompactPoseIndex.GetInt(), trans);
-
-			if (StoredActionInfoPtr->bAllowDeformingMesh)
-			{
-				trans = (AdditionTransform)* trans;
-
-				if (CurrentBone != EVROpenInputBones::eBone_Root )//&& !StoredActionInfoPtr->bGetTransformsInParentSpace)
-				{
-					trans.SetTranslation(MappedBonePairs.AdjustmentQuat.RotateVector(trans.GetTranslation()));
-					trans.SetRotation((MappedBonePairs.AdjustmentQuat * trans.GetRotation()).GetNormalized());
-				}
-			}
-			else
-			{
+			if ((!MappedBonePairs.bMergeMissingBonesUE4 && CurrentBone != EVROpenInputBones::eBone_Root) || (MappedBonePairs.bMergeMissingBonesUE4 && CurrentBone != EVROpenInputBones::eBone_Wrist))
 				trans.ConcatenateRotation(AdditionTransform.GetRotation());
-				if (CurrentBone != EVROpenInputBones::eBone_Root)// && !StoredActionInfoPtr->bGetTransformsInParentSpace)
-					trans.SetRotation((MappedBonePairs.AdjustmentQuat * trans.GetRotation()).GetNormalized());
-			}
+
+			if (CurrentBone == EVROpenInputBones::eBone_Wrist)
+				trans.SetRotation((MappedBonePairs.AdjustmentQuat * trans.GetRotation()).GetNormalized());
 		}
 		
 		TransBones.Add(FBoneTransform(BonePair.ReferenceToConstruct.CachedCompactPoseIndex, trans));
 
 		// Need to do it per bone so future bones are correct
-		if ((!StoredActionInfoPtr->bAllowDeformingMesh || StoredActionInfoPtr->bGetTransformsInParentSpace) && TransBones.Num())
+		if (TransBones.Num())
 		{
 			Output.Pose.LocalBlendCSBoneTransforms(TransBones, BlendWeight);
 			TransBones.Reset();
 		}
-	}
 
-	// Fine doing it at the end, all bones are self authoritative, this is a perf savings
-	if (StoredActionInfoPtr->bAllowDeformingMesh && !StoredActionInfoPtr->bGetTransformsInParentSpace && TransBones.Num())
-	{
-		Output.Pose.LocalBlendCSBoneTransforms(TransBones, BlendWeight);
-		TransBones.Reset();
+		if (bOnlyApplyWristTransform && CurrentBone == EVROpenInputBones::eBone_Wrist)
+		{
+			break; // Early out of the loop, we only wanted to apply the wrist
+		}
 	}
 }
 
