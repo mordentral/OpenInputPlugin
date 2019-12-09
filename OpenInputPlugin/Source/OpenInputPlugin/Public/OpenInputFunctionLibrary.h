@@ -154,8 +154,8 @@ public:
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 		EVRActionHand TargetHand;
 
-	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
-		bool bGetTransformsInParentSpace;
+	//UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
+	//	bool bGetTransformsInParentSpace;
 
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 		bool bAllowDeformingMesh;
@@ -163,6 +163,10 @@ public:
 	// If true then the hand mesh will be mirrored, generally used for full body rigs to fix the left hands axis
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 		bool bMirrorHand;
+
+	// If true then the bones will be mirrored from left/right, to allow you to swap a hand mesh
+	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
+		bool bMirrorLeftRight;
 
 	UPROPERTY(BlueprintReadOnly, NotReplicated, Transient, Category = Default)
 		TArray<FTransform> SkeletalTransforms;
@@ -173,10 +177,11 @@ public:
 
 	FBPOpenVRActionSkeletalData()
 	{
-		bGetTransformsInParentSpace = false;
+		//bGetTransformsInParentSpace = false;
 		AdditionTransform = FTransform(FRotator(0.f, 90.f, 90.f), FVector::ZeroVector, FVector(1.f));
 		bAllowDeformingMesh = true;
 		bMirrorHand = false;
+		bMirrorLeftRight = false;
 		TargetHand = EVRActionHand::EActionHand_Right;
 	}
 };
@@ -200,6 +205,7 @@ struct OPENINPUTPLUGIN_API FBPOpenVRActionInfo
 	GENERATED_BODY()
 public:
 
+	// If true with get the controller hand pose, otherwise will get the plain hand pose
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 		bool bGetSkeletalTransforms_WithController;
 
@@ -568,21 +574,6 @@ public:
 
 #if STEAMVR_SUPPORTED_PLATFORM
 
-	FORCEINLINE static FVector CONVERT_STEAMVECTOR_TO_FVECTOR(const vr::HmdVector4_t InVector)
-	{
-		return FVector(-InVector.v[2], InVector.v[0], InVector.v[1]);
-	}
-
-	FORCEINLINE static FVector CONVERT_STEAMVECTOR_TO_FVECTOR_Y(const vr::HmdVector4_t InVector)
-	{
-		return FVector(-InVector.v[0], -InVector.v[2], InVector.v[1]);
-	}
-	
-	FORCEINLINE static FQuat CONVERT_STEAMQUAT_TO_FQUAT(const vr::HmdQuaternionf_t InQuat)
-	{
-		return FQuat(-InQuat.z, InQuat.x, InQuat.y, -InQuat.w);
-	}
-	
 	FORCEINLINE static FTransform CONVERT_STEAMTRANS_TO_FTRANS(const vr::VRBoneTransform_t InTrans, float WorldToMeters)
 	{
 		return FTransform(
@@ -591,33 +582,117 @@ public:
 		);
 	}
 
+
+	static void MIRROR_OPENINPUT_BONES(TArray<vr::VRBoneTransform_t> &BoneTransforms)
+	{
+
+		/*
+		Function code referenced
+
+		Copyright 2019 Valve Corporation under https://opensource.org/licenses/BSD-3-Clause
+		This code includes modifications by Joshua Statzer (MordenTral)
+
+		Redistribution and use in source and binary forms, with or without modification,
+		are permitted provided that the following conditions are met:
+
+		1. Redistributions of source code must retain the above copyright notice, this
+		   list of conditions and the following disclaimer.
+
+		2. Redistributions in binary form must reproduce the above copyright notice,
+		   this list of conditions and the following disclaimer in the documentation
+		   and/or other materials provided with the distribution.
+
+		3. Neither the name of the copyright holder nor the names of its contributors
+		   may be used to endorse or promote products derived from this software
+		   without specific prior written permission.
+
+		THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+		ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+		WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+		IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+		INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+		BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
+		OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+		WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+		ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+		POSSIBILITY OF SUCH DAMAGE.
+		*/
+
+		static const uint8 PartialMirror[] = {
+			(uint8)EVROpenInputBones::eBone_Wrist,
+			(uint8)EVROpenInputBones::eBone_Aux_Thumb,
+			(uint8)EVROpenInputBones::eBone_Aux_IndexFinger,
+			(uint8)EVROpenInputBones::eBone_Aux_MiddleFinger,
+			(uint8)EVROpenInputBones::eBone_Aux_RingFinger,
+			(uint8)EVROpenInputBones::eBone_Aux_PinkyFinger,
+		};
+
+		static const uint8 FullMirror[] = {
+			(uint8)EVROpenInputBones::eBone_Thumb0,
+			(uint8)EVROpenInputBones::eBone_IndexFinger0,
+			(uint8)EVROpenInputBones::eBone_MiddleFinger0,
+			(uint8)EVROpenInputBones::eBone_RingFinger0,
+			(uint8)EVROpenInputBones::eBone_PinkyFinger0
+		};
+
+		static const uint8 TranslationOnly[] = {
+			(uint8)EVROpenInputBones::eBone_Thumb1,
+			(uint8)EVROpenInputBones::eBone_Thumb2,
+			(uint8)EVROpenInputBones::eBone_Thumb3,
+			(uint8)EVROpenInputBones::eBone_IndexFinger1,
+			(uint8)EVROpenInputBones::eBone_IndexFinger2,
+			(uint8)EVROpenInputBones::eBone_IndexFinger3,
+			(uint8)EVROpenInputBones::eBone_IndexFinger4,
+			(uint8)EVROpenInputBones::eBone_MiddleFinger1,
+			(uint8)EVROpenInputBones::eBone_MiddleFinger2,
+			(uint8)EVROpenInputBones::eBone_MiddleFinger3,
+			(uint8)EVROpenInputBones::eBone_MiddleFinger4,
+			(uint8)EVROpenInputBones::eBone_RingFinger1,
+			(uint8)EVROpenInputBones::eBone_RingFinger2,
+			(uint8)EVROpenInputBones::eBone_RingFinger3,
+			(uint8)EVROpenInputBones::eBone_RingFinger4,
+			(uint8)EVROpenInputBones::eBone_PinkyFinger1,
+			(uint8)EVROpenInputBones::eBone_PinkyFinger2,
+			(uint8)EVROpenInputBones::eBone_PinkyFinger3,
+			(uint8)EVROpenInputBones::eBone_PinkyFinger4
+		};
+
+		const int32 TranslationOnlyBoneCount = sizeof(TranslationOnly) / sizeof(uint8);
+		for (int32 i = 0; i < TranslationOnlyBoneCount && i < BoneTransforms.Num(); ++i)
+		{
+			const int32 BoneIndex = TranslationOnly[i];
+			vr::HmdVector4_t& Position = BoneTransforms[BoneIndex].position;
+			Position.v[0] *= -1.f;
+			Position.v[1] *= -1.f;
+			Position.v[2] *= -1.f;
+		}
+
+		const int32 FullMirrorCount = sizeof(FullMirror) / sizeof(uint8);
+		for (int32 i = 0; i < FullMirrorCount && i < BoneTransforms.Num(); ++i)
+		{
+			const int32 BoneIndex = FullMirror[i];
+
+			vr::VRBoneTransform_t& BoneTransform = BoneTransforms[BoneIndex];
+			BoneTransform.position.v[0] *= -1.f;
+			vr::HmdQuaternionf_t OriginalRotation = BoneTransform.orientation;
+			BoneTransform.orientation.w = OriginalRotation.x;
+			BoneTransform.orientation.x = -OriginalRotation.w;
+			BoneTransform.orientation.y = OriginalRotation.z;
+			BoneTransform.orientation.z = -OriginalRotation.y;
+		}
+
+		const int32 PartialMirrorCount = sizeof(PartialMirror) / sizeof(uint8);
+		for (int32 i = 0; i < PartialMirrorCount && i < BoneTransforms.Num(); ++i)
+		{
+			const int32 BoneIndex = PartialMirror[i];
+			vr::VRBoneTransform_t& BoneTransform = BoneTransforms[BoneIndex];
+			BoneTransform.position.v[0] *= -1.f;
+			BoneTransform.orientation.y *= -1.f;
+			BoneTransform.orientation.z *= -1.f;
+		}
+	}
+
 #endif
-
-	// Checks if a specific OpenVR device is connected, index names are assumed, they may not be exact
-	/*UFUNCTION(BlueprintCallable, Category = "OpenInputFunctions|SteamVR", meta = (bIgnoreSelf = "true"))
-	static bool SetActionsManifest(int32 DeviceIndex)
-{
-#if !STEAMVR_SUPPORTED_PLATFORM
-	return false;
-#else
-
-		vr::EVRInitError Initerror;
-		vr::IVRInput * VRInput =  vr::VRInput();
-
-		if (!VRInput)
-			return false;
-
-		FString manifestPath = FPaths::ProjectDir() + "legacy_actions.json";
-		manifestPath = IFileManager::Get().ConvertToAbsolutePathForExternalAppForRead(*manifestPath);
-		auto buff = StringCast<ANSICHAR>(*manifestPath);
-		vr::EVRInputError InputError = VRInput->SetActionManifestPath(buff.Get());
-
-		if (true)
-			int val = 0;
-		return true;
-
-#endif
-}*/
 
 	// Decompresses compressed bone data from OpenInput
 	static bool DecompressSkeletalData(FBPOpenVRActionInfo & Action, UWorld * WorldToUseForScale)
@@ -641,7 +716,7 @@ public:
 		Action.CompressedSize = Action.CompressedTransforms.Num();
 
 		vr::EVRInputError InputError = vr::EVRInputError::VRInputError_None;
-		vr::EVRSkeletalTransformSpace TransSpace = Action.SkeletalData.bGetTransformsInParentSpace ? vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model;
+		vr::EVRSkeletalTransformSpace TransSpace = /*Action.SkeletalData.bGetTransformsInParentSpace ?*/ vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent;// : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model;
 		InputError = VRInput->DecompressSkeletalBoneData(Action.CompressedTransforms.GetData(), Action.CompressedSize, TransSpace, BoneTransforms.GetData(), Action.BoneCount);
 
 		if (InputError != vr::EVRInputError::VRInputError_None)
@@ -659,6 +734,9 @@ public:
 		}
 
 		float WorldToMeters = ((WorldToUseForScale != nullptr) ? WorldToMeters = WorldToUseForScale->GetWorldSettings()->WorldToMeters : 100.f);
+
+		if (Action.SkeletalData.bMirrorLeftRight)
+			MIRROR_OPENINPUT_BONES(BoneTransforms);
 
 		for (int i = 0; i < BoneTransforms.Num(); ++i)
 			Action.SkeletalData.SkeletalTransforms[i] = CONVERT_STEAMTRANS_TO_FTRANS(BoneTransforms[i], WorldToMeters);
@@ -849,7 +927,7 @@ public:
 		vr::EVRSkeletalMotionRange MotionTypeToGet = Action.bGetSkeletalTransforms_WithController ? vr::EVRSkeletalMotionRange::VRSkeletalMotionRange_WithController : vr::EVRSkeletalMotionRange::VRSkeletalMotionRange_WithoutController;
 		
 		{
-			InputError = VRInput->GetSkeletalBoneData(Action.ActionHandleContainer.ActionHandle, Action.SkeletalData.bGetTransformsInParentSpace ? vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model, MotionTypeToGet, BoneTransforms.GetData(), Action.BoneCount);
+			InputError = VRInput->GetSkeletalBoneData(Action.ActionHandleContainer.ActionHandle, /*Action.SkeletalData.bGetTransformsInParentSpace ? */vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent/* : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model*/, MotionTypeToGet, BoneTransforms.GetData(), Action.BoneCount);
 			Action.CompressedSize = 0;
 			Action.CompressedTransforms.Empty(bGetCompressedData ? Action.BoneCount : 0);
 		}
@@ -884,6 +962,10 @@ public:
 		UWorld* World = (WorldContextObject) ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull) : nullptr;
 		float WorldToMeters = ((World != nullptr) ? WorldToMeters = World->GetWorldSettings()->WorldToMeters : 100.f);
 
+
+		if(Action.SkeletalData.bMirrorLeftRight)
+			MIRROR_OPENINPUT_BONES(BoneTransforms);
+
 		for (int i = 0; i < BoneTransforms.Num(); ++i)
 		{
 			Action.SkeletalData.SkeletalTransforms[i] = CONVERT_STEAMTRANS_TO_FTRANS(BoneTransforms[i], WorldToMeters);
@@ -897,7 +979,7 @@ public:
 
 	// Checks if a specific OpenVR device is connected, index names are assumed, they may not be exact
 	UFUNCTION(BlueprintCallable, Category = "OpenInputFunctions|SteamVR", meta = (bIgnoreSelf = "true", WorldContext = "WorldContextObject", CallableWithoutWorldContext))
-		static bool GetReferencePose(UPARAM(ref)FBPOpenVRActionInfo & BlankActionToFill, FBPOpenVRActionHandle ActionHandleToQuery, bool bGetTransformsInParentSpace, class UObject* WorldContextObject, EVROpenInputReferencePose PoseTypeToRetreive)
+		static bool GetReferencePose(UPARAM(ref)FBPOpenVRActionInfo & BlankActionToFill, FBPOpenVRActionHandle ActionHandleToQuery, /*bool bGetTransformsInParentSpace,*/ class UObject* WorldContextObject, EVROpenInputReferencePose PoseTypeToRetreive)
 	{
 #if !STEAMVR_SUPPORTED_PLATFORM
 		Action.bHasValidData = false;
@@ -907,7 +989,7 @@ public:
 		vr::IVRInput * VRInput =  vr::VRInput();
 
 		BlankActionToFill.bHasValidData = false;
-		BlankActionToFill.SkeletalData.bGetTransformsInParentSpace = bGetTransformsInParentSpace;
+		//BlankActionToFill.SkeletalData.bGetTransformsInParentSpace = bGetTransformsInParentSpace;
 		BlankActionToFill.ActionHandleContainer = ActionHandleToQuery;
 
 		if (!VRInput)
@@ -942,7 +1024,8 @@ public:
 		{
 			InputError = VRInput->GetSkeletalReferenceTransforms(
 				BlankActionToFill.ActionHandleContainer.ActionHandle, 
-				BlankActionToFill.SkeletalData.bGetTransformsInParentSpace ? vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model, 
+				vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent,
+				//BlankActionToFill.SkeletalData.bGetTransformsInParentSpace ? vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Parent : vr::EVRSkeletalTransformSpace::VRSkeletalTransformSpace_Model, 
 				(vr::EVRSkeletalReferencePose)PoseTypeToRetreive,
 				BoneTransforms.GetData(), 
 				BlankActionToFill.BoneCount);
@@ -967,6 +1050,9 @@ public:
 
 		UWorld* World = (WorldContextObject) ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull) : nullptr;
 		float WorldToMeters = ((World != nullptr) ? WorldToMeters = World->GetWorldSettings()->WorldToMeters : 100.f);
+
+		if (BlankActionToFill.SkeletalData.bMirrorLeftRight)
+			MIRROR_OPENINPUT_BONES(BoneTransforms);
 
 		for (int i = 0; i < BoneTransforms.Num(); ++i)
 			BlankActionToFill.SkeletalData.SkeletalTransforms[i] = CONVERT_STEAMTRANS_TO_FTRANS(BoneTransforms[i], WorldToMeters);

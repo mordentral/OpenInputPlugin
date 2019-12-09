@@ -24,7 +24,7 @@ UOpenInputSkeletalMeshComponent::UOpenInputSkeletalMeshComponent(const FObjectIn
 	bOffsetByControllerProfile = true;
 	SkeletalNetUpdateCount = 0.f;
 	bDetectGestures = true;
-	this->SetIsReplicated(true);
+	SetIsReplicatedByDefault(true);
 }
 
 void UOpenInputSkeletalMeshComponent::GetLifetimeReplicatedProps(TArray< class FLifetimeProperty > & OutLifetimeProps) const

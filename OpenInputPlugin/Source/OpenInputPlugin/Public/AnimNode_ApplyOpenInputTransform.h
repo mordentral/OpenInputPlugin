@@ -48,6 +48,11 @@ public:
 		BoneToTarget = FName(*TargetBone);
 		ReferenceToConstruct.BoneName = BoneToTarget;
 	}
+
+	FORCEINLINE bool operator==(const int32 &Other) const
+	{
+		return ReferenceToConstruct.BoneIndex == Other;
+	}
 };
 
 USTRUCT(BlueprintType, Category = "VRExpansionFunctions|SteamVR|HandSkeleton")
@@ -219,6 +224,10 @@ public:
 	// If your hand is part of a full body or arm skeleton and you don't have a proxy bone to retain the position enable this
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Skeletal, meta = (PinShownByDefault))
 		bool bSkipRootBone;
+
+	// If you only want to use the wrist transform part of this
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Skeletal, meta = (PinShownByDefault))
+		bool bOnlyApplyWristTransform;
 	
 	// Generally used when not passing in custom bone mappings, defines the auto mapping style
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Skeletal, meta = (PinShownByDefault))
@@ -276,6 +285,7 @@ public:
 	virtual bool IsValidToEvaluate(const USkeleton* Skeleton, const FBoneContainer& RequiredBones) override;
 	// End of FAnimNode_SkeletalControlBase interface
 	virtual void OnInitializeAnimInstance(const FAnimInstanceProxy* InProxy, const UAnimInstance* InAnimInstance) override;
+	virtual bool NeedsOnInitializeAnimInstance() const override { return true; }
 	virtual void InitializeBoneReferences(const FBoneContainer& RequiredBones) override;
 
 	// Constructor 
