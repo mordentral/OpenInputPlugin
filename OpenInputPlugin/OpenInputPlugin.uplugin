@@ -28,7 +28,7 @@
 		},
 		{
 			"Name": "OpenInputPluginEditor",
-			"Type": "Editor",
+			"Type": "UnCookedOnly",
 			"LoadingPhase": "PreDefault",
 			"WhitelistPlatforms" :
 			[
