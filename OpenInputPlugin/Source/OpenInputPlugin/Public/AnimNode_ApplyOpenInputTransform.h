@@ -175,7 +175,6 @@ public:
 		// Default ue4 skeleton hand to the OpenVR bones, skipping the extra joint and the aux joints
 		if (!bSkipRootBone)
 		{
-			//BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Root, FString::Printf(TEXT("hand_%s"), HandDelimiter)));
 			BonePairs.Add(FBPOpenVRSkeletalPair(EVROpenInputBones::eBone_Wrist, FString::Printf(TEXT("hand_%s"), HandDelimiter)));
 		}
 
