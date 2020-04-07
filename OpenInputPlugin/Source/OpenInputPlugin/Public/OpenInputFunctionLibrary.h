@@ -562,6 +562,26 @@ public:
 	~UOpenInputFunctionLibrary();
 public:
 
+	/** Converts a FBPOpenInputActioInfo into a FBPSkeletalRepContainer */
+	UFUNCTION(BlueprintCallable, Category = "OpenInputReplication")
+	static void FillRepContainerFromActionInfo(UPARAM(ref) FBPOpenVRActionInfo& ActionInfo, UPARAM(ref) FBPSkeletalRepContainer & TargetRepContainer, EVRSkeletalReplicationType ReplicationType)
+	{
+		TargetRepContainer.CopyForReplication(ActionInfo, ReplicationType);
+	}
+
+	UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject", CallableWithoutWorldContext), Category = "OpenInputReplication")
+	static void FillActionInfoFromRepContainer(UObject* WorldContextObject, UPARAM(ref) FBPOpenVRActionInfo& ActionInfo, UPARAM(ref) FBPSkeletalRepContainer& TargetRepContainer)
+	{
+		TargetRepContainer.CopyReplicatedTo(TargetRepContainer, ActionInfo);
+
+		if (ActionInfo.CompressedTransforms.Num() > 0)
+		{
+			UOpenInputFunctionLibrary::DecompressSkeletalData(ActionInfo, WorldContextObject->GetWorld());
+			ActionInfo.CompressedTransforms.Reset();
+		}
+	}
+
+
 	UFUNCTION(BlueprintPure)
 	static FTransform GetOpenVRBoneTransform(EVROpenInputBones BoneToGet, FBPOpenVRActionInfo HandSkeletalAction)
 	{
