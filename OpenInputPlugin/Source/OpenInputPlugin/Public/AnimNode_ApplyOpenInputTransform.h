@@ -51,7 +51,8 @@ public:
 
 	FORCEINLINE bool operator==(const int32 &Other) const
 	{
-		return ReferenceToConstruct.BoneIndex == Other;
+		return ReferenceToConstruct.CachedCompactPoseIndex.GetInt() == Other;
+		//return ReferenceToConstruct.BoneIndex == Other;
 	}
 };
 

@@ -60,6 +60,7 @@ void FAnimNode_ApplyOpenInputTransform::InitializeBoneReferences(const FBoneCont
 
 				// Init the reference
 				BonePair.ReferenceToConstruct.Initialize(AssetSkeleton);
+
 				BonePair.ReferenceToConstruct.CachedCompactPoseIndex = BonePair.ReferenceToConstruct.GetCompactPoseIndex(RequiredBones);
 
 				if ((BonePair.ReferenceToConstruct.CachedCompactPoseIndex != INDEX_NONE))
@@ -67,6 +68,7 @@ void FAnimNode_ApplyOpenInputTransform::InitializeBoneReferences(const FBoneCont
 					// Get our parent bones index
 					BonePair.ParentReference = RequiredBones.GetParentBoneIndex(BonePair.ReferenceToConstruct.CachedCompactPoseIndex);
 				}
+				
 
 				if (BonePair.OpenVRBone == EVROpenInputBones::eBone_Wrist)
 				{
@@ -205,12 +207,13 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 		{
 			continue;
 		}
-		
+
 		trans = Output.Pose.GetComponentSpaceTransform(BonePair.ReferenceToConstruct.CachedCompactPoseIndex);
 
 		if (BonePair.ParentReference != INDEX_NONE)
 		{
 			ParentTrans = Output.Pose.GetComponentSpaceTransform(BonePair.ParentReference);
+
 			if (FBPOpenVRSkeletalPair * ParentPair = MappedBonePairs.BonePairs.FindByKey(BonePair.ParentReference.GetInt()))
 			{
 				if(!MappedBonePairs.bMergeMissingBonesUE4 || ParentPair->OpenVRBone != EVROpenInputBones::eBone_Wrist)
