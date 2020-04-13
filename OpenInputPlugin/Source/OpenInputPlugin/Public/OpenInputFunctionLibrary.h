@@ -8,6 +8,7 @@
 #include "GameFramework/WorldSettings.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "HAL/FileManager.h"
+#include "DrawDebugHelpers.h"
 #include "Misc/Paths.h"
 #include "Engine/EngineTypes.h"
 
@@ -465,22 +466,41 @@ public:
 		case EVRSkeletalReplicationType::Rep_CurlOnly:
 		case EVRSkeletalReplicationType::Rep_CurlAndSplay:
 		{
-			int NumFingers = PoseFingerData.PoseFingerCurls.Num();
-			Ar.SerializeBits(&NumFingers, 8);
 
-			for (int i = 0; i < NumFingers; i++)
+			bool bHasCurlData = PoseFingerData.PoseFingerCurls.Num() > 0;
+			Ar.SerializeBits(&bHasCurlData, 1);
+
+			if (bHasCurlData)
 			{
-				bOutSuccess &= WriteFixedCompressedFloat<1, 16>(PoseFingerData.PoseFingerCurls[i], Ar);
-			}
+				int NumFingers = PoseFingerData.PoseFingerCurls.Num();
+				Ar.SerializeBits(&NumFingers, 8);
 
-			if (ReplicationType == EVRSkeletalReplicationType::Rep_CurlAndSplay)
-			{
-				int NumSplays = PoseFingerData.PoseFingerSplays.Num();
-				Ar.SerializeBits(&NumSplays, 8);
-
-				for (int i = 0; i < NumSplays; i++)
+				if (PoseFingerData.PoseFingerCurls.Num() < NumFingers)
 				{
-					bOutSuccess &= WriteFixedCompressedFloat<1, 16>(PoseFingerData.PoseFingerSplays[i], Ar);
+					PoseFingerData.PoseFingerCurls.Reset(NumFingers);
+					PoseFingerData.PoseFingerCurls.AddUninitialized(NumFingers);
+				}
+
+				for (int i = 0; i < NumFingers; i++)
+				{
+					bOutSuccess &= WriteFixedCompressedFloat<1, 16>(PoseFingerData.PoseFingerCurls[i], Ar);
+				}
+
+				if (ReplicationType == EVRSkeletalReplicationType::Rep_CurlAndSplay)
+				{
+					int NumSplays = PoseFingerData.PoseFingerSplays.Num();
+					Ar.SerializeBits(&NumSplays, 8);
+
+					if (PoseFingerData.PoseFingerSplays.Num() < NumSplays)
+					{
+						PoseFingerData.PoseFingerSplays.Reset(NumSplays);
+						PoseFingerData.PoseFingerSplays.AddUninitialized(NumSplays);
+					}
+
+					for (int i = 0; i < NumSplays; i++)
+					{
+						bOutSuccess &= WriteFixedCompressedFloat<1, 16>(PoseFingerData.PoseFingerSplays[i], Ar);
+					}
 				}
 			}
 
@@ -990,6 +1010,17 @@ public:
 		{
 			Action.SkeletalData.SkeletalTransforms[i] = CONVERT_STEAMTRANS_TO_FTRANS(BoneTransforms[i], WorldToMeters);
 		}
+
+		/*if (UPrimitiveComponent* PrimPar = Cast<UPrimitiveComponent>(WorldContextObject))
+		{
+			FTransform SkeleTrans = Action.SkeletalData.SkeletalTransforms[1];
+			SkeleTrans.SetRotation(SkeleTrans.GetRotation() * FRotator(0.f, 90.f, 90.f).Quaternion());
+			FTransform WorldTrans = (SkeleTrans * PrimPar->GetComponentTransform());
+			DrawDebugSphere(WorldContextObject->GetWorld(), WorldTrans.GetLocation(), 4.f, 32.f, FColor::White);
+			DrawDebugLine(WorldContextObject->GetWorld(), WorldTrans.GetLocation(), WorldTrans.GetLocation() + (WorldTrans.GetRotation().GetForwardVector() * 100.f), FColor::Red);
+			DrawDebugLine(WorldContextObject->GetWorld(), WorldTrans.GetLocation(), WorldTrans.GetLocation() + (WorldTrans.GetRotation().GetRightVector() * 100.f), FColor::Green);
+			DrawDebugLine(WorldContextObject->GetWorld(), WorldTrans.GetLocation(), WorldTrans.GetLocation() + (WorldTrans.GetRotation().GetUpVector() * 100.f), FColor::Blue);
+		}*/
 
 		Action.bHasValidData = true;
 		return true;
