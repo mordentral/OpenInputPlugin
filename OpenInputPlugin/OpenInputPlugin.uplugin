@@ -40,10 +40,6 @@
 	],
 	"Plugins": [
 		{
-			"Name": "SteamVR",
-			"Enabled": true
-		},
-		{
 			"Name": "VRExpansionPlugin",
 			"Enabled": true
 		}
