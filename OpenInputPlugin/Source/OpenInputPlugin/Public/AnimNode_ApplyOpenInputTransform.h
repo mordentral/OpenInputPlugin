@@ -226,6 +226,7 @@ public:
 		bool bSkipRootBone;
 
 	// If you only want to use the wrist transform part of this
+	// This will also automatically add the deform to the wrist as it doesn't make much sense without it
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Skeletal, meta = (PinShownByDefault))
 		bool bOnlyApplyWristTransform;
 	
