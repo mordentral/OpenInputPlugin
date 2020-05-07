@@ -218,7 +218,7 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 			{
 				if(!MappedBonePairs.bMergeMissingBonesUE4 || ParentPair->OpenVRBone != EVROpenInputBones::eBone_Wrist)
 				{
-					if (StoredActionInfoPtr->bAllowDeformingMesh)
+					if (StoredActionInfoPtr->bAllowDeformingMesh || bOnlyApplyWristTransform)
 					{
 						if (ParentPair->OpenVRBone != EVROpenInputBones::eBone_Root)
 						{
@@ -268,12 +268,12 @@ void FAnimNode_ApplyOpenInputTransform::EvaluateSkeletalControl_AnyThread(FCompo
 
 		TempTrans = TempTrans * ParentTrans;
 
-		if (StoredActionInfoPtr->bAllowDeformingMesh)
+		if (StoredActionInfoPtr->bAllowDeformingMesh || bOnlyApplyWristTransform)
 			trans.SetTranslation(TempTrans.GetTranslation());
 
 		trans.SetRotation(TempTrans.GetRotation());
 
-		if (StoredActionInfoPtr->bAllowDeformingMesh)
+		if (StoredActionInfoPtr->bAllowDeformingMesh || bOnlyApplyWristTransform)
 		{
 			if((!MappedBonePairs.bMergeMissingBonesUE4 && CurrentBone != EVROpenInputBones::eBone_Root) || (MappedBonePairs.bMergeMissingBonesUE4 && CurrentBone != EVROpenInputBones::eBone_Wrist))
 				trans = AdditionTransform * trans;
