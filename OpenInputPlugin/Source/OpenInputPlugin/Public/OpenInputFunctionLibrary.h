@@ -158,6 +158,10 @@ public:
 	//UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 	//	bool bGetTransformsInParentSpace;
 
+	// A world scale override that will replace the engines current value and force into the tracked data if non zero
+	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
+		float WorldScaleOverride;
+
 	UPROPERTY(EditAnywhere, NotReplicated, BlueprintReadWrite, Category = Default)
 		bool bAllowDeformingMesh;
 
@@ -180,6 +184,7 @@ public:
 	{
 		//bGetTransformsInParentSpace = false;
 		AdditionTransform = FTransform(FRotator(0.f, 90.f, 90.f), FVector::ZeroVector, FVector(1.f));
+		WorldScaleOverride = 0.0f;
 		bAllowDeformingMesh = true;
 		bMirrorHand = false;
 		bMirrorLeftRight = false;
@@ -773,7 +778,7 @@ public:
 			Action.SkeletalData.SkeletalTransforms.AddUninitialized(Action.BoneCount);
 		}
 
-		float WorldToMeters = ((WorldToUseForScale != nullptr) ? WorldToMeters = WorldToUseForScale->GetWorldSettings()->WorldToMeters : 100.f);
+		float WorldToMeters = Action.SkeletalData.WorldScaleOverride > 0.0f ?  Action.SkeletalData.WorldScaleOverride : ((WorldToUseForScale != nullptr) ? WorldToMeters = WorldToUseForScale->GetWorldSettings()->WorldToMeters : 100.f);
 
 		if (Action.SkeletalData.bMirrorLeftRight)
 			MIRROR_OPENINPUT_BONES(BoneTransforms);
@@ -1000,7 +1005,7 @@ public:
 		}
 
 		UWorld* World = (WorldContextObject) ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull) : nullptr;
-		float WorldToMeters = ((World != nullptr) ? WorldToMeters = World->GetWorldSettings()->WorldToMeters : 100.f);
+		float WorldToMeters = Action.SkeletalData.WorldScaleOverride > 0.0f ? Action.SkeletalData.WorldScaleOverride : ((World != nullptr) ? WorldToMeters = World->GetWorldSettings()->WorldToMeters : 100.f);
 
 
 		if(Action.SkeletalData.bMirrorLeftRight)
@@ -1100,7 +1105,7 @@ public:
 		}
 
 		UWorld* World = (WorldContextObject) ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull) : nullptr;
-		float WorldToMeters = ((World != nullptr) ? WorldToMeters = World->GetWorldSettings()->WorldToMeters : 100.f);
+		float WorldToMeters = BlankActionToFill.SkeletalData.WorldScaleOverride > 0.0f ? BlankActionToFill.SkeletalData.WorldScaleOverride : ((World != nullptr) ? WorldToMeters = World->GetWorldSettings()->WorldToMeters : 100.f);
 
 		if (BlankActionToFill.SkeletalData.bMirrorLeftRight)
 			MIRROR_OPENINPUT_BONES(BoneTransforms);
