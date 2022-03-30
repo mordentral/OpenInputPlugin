@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
-	"Version": 4.24,
-	"VersionName": "4.24",
+	"Version": 5.0,
+	"VersionName": "5.0",
 	"FriendlyName": "OpenInputPlugin",
 	"Description": "Adds several new nodes for open input support",
 	"Category": "VRExpansion",
@@ -22,7 +22,6 @@
 			"WhitelistPlatforms" :
 			[
 				"Win64",
-				"Win32",
 				"Linux"
 			]
 		},
@@ -33,7 +32,6 @@
 			"WhitelistPlatforms" :
 			[
 				"Win64",
-				"Win32",
 				"Linux"
 			]
 		}

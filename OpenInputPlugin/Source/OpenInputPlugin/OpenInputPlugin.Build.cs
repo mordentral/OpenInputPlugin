@@ -43,6 +43,7 @@ public class OpenInputPlugin : ModuleRules
                 "CoreUObject",
                 "Engine",
                 "InputCore",
+                "NetCore", // NetSerialization.h has an inline function depending on this
                 "HeadMountedDisplay",
                // "HeadMountedDisplay",
                 "RHI",
@@ -63,7 +64,6 @@ public class OpenInputPlugin : ModuleRules
 
         if (
             Target.Platform == UnrealTargetPlatform.Win64 ||
-            Target.Platform == UnrealTargetPlatform.Win32 ||
             Target.Platform == UnrealTargetPlatform.Mac ||
             (Target.Platform == UnrealTargetPlatform.Linux && Target.Architecture.StartsWith("x86_64"))
             )

@@ -173,7 +173,7 @@ public:
 	// Need this as I can't think of another way for an actor component to make sure it isn't on the server
 	inline bool IsLocallyControlled() const
 	{
-#if ENGINE_MAJOR_VERSION >= 4 && ENGINE_MINOR_VERSION >= 22
+#if ENGINE_MAJOR_VERSION > 4 || (ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 22)
 		const AActor* MyOwner = GetOwner();
 		return MyOwner->HasLocalNetOwner();
 #else
